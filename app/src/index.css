@@ -1,0 +1,855 @@
+/* Fonts and icons are bundled rather than pulled from a CDN, so the app works
+   on a locked-down network and without an internet connection. */
+@import '@fontsource/roboto/latin-300.css';
+@import '@fontsource/roboto/latin-400.css';
+@import '@fontsource/roboto/latin-500.css';
+@import '@fontsource/roboto/latin-700.css';
+@import '@fontsource/inter/latin-400.css';
+@import '@fontsource/inter/latin-600.css';
+@import '@fontsource/inter/latin-700.css';
+@import '@fontsource/inter/latin-800.css';
+@import './styles/aegov-colors-and-type.css';
+
+/* ============================================================================
+   Team leave · 2026 — "Soft Data" direction.
+   Light canvas, one teal accent, a distinct colour per team member.
+   Static values live here; anything that varies per member (their colour,
+   progress width, avatar photo) is applied inline from the component.
+   ========================================================================== */
+
+:root {
+  --teal: #0E7C7B;
+  --teal-dark: #0A5F5E;
+  --teal-tint: #DDF0EF;
+  --ink: #12303A;
+  --muted: #6B7C86;
+  --soft: #8FA0AB;
+  --faint: #B4C0C8;
+  --line: #EEF2F4;
+  --line-strong: #EAEEF1;
+  --field-border: #D5DDE2;
+  --surface: #FFFFFF;
+  --canvas: #F4F7F9;
+  --chip: #F1F5F7;
+  --conflict: #EF8F6B;
+  --conflict-ink: #B84A2E;
+  --conflict-tint: #FDEEE8;
+  --holiday-tint: #E6EEFB;
+  --holiday-ink: #3E6FC4;
+  --danger: #E05A45;
+  --heading: Inter, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  font-family: Roboto, sans-serif;
+  color: var(--ink);
+}
+
+a { color: var(--teal); }
+a:hover { color: var(--teal-dark); }
+
+input, select, textarea, button {
+  font-family: Roboto, sans-serif;
+}
+
+/* Days, member rows and month avatars are real buttons, so they need a
+   visible keyboard focus state. Mouse users never see it. */
+:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
+.day:focus-visible,
+.month__face:focus-visible {
+  outline-offset: 1px;
+}
+
+.page {
+  min-height: 100vh;
+}
+
+/* Inline SVG glyphs sized in `em`, so surrounding rules keep sizing them
+   with `font-size` exactly as the original icon font did. */
+.icon {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------- header -- */
+
+.header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--line-strong);
+  padding: 22px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.header__eyebrow {
+  font-family: var(--heading);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--teal);
+  text-transform: uppercase;
+}
+
+.header__title {
+  font-family: var(--heading);
+  font-size: 26px;
+  font-weight: 800;
+  margin: 4px 0 0;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.header__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header__stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--chip);
+  border-radius: 14px;
+  padding: 9px 16px;
+  font-size: 14px;
+}
+
+.header__stat .icon {
+  font-size: 18px;
+  color: var(--teal);
+}
+
+/* --------------------------------------------------------------- buttons -- */
+
+.btn-primary {
+  border: none;
+  cursor: pointer;
+  background: var(--teal);
+  color: var(--surface);
+  font-family: var(--heading);
+  font-weight: 700;
+  font-size: 14px;
+  padding: 11px 20px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-primary:hover { background: var(--teal-dark); }
+.btn-primary .icon { font-size: 16px; }
+
+/* Square, quiet icon button — data import/export and month stepping. */
+.btn-icon {
+  border: 1px solid #E1E7EB;
+  background: var(--surface);
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--ink);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.btn-icon:hover { background: var(--chip); }
+.btn-icon .icon { font-size: 15px; }
+
+.btn-icon--lg {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  color: var(--muted);
+}
+
+.btn-icon--lg .icon { font-size: 18px; }
+
+.btn-link {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--teal-dark);
+  font-weight: 700;
+  font-size: 13px;
+  text-decoration: underline;
+  padding: 0;
+}
+
+/* ------------------------------------------------------------------ shell -- */
+
+.shell {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 24px;
+  padding: 24px 32px;
+  align-items: start;
+  max-width: 1760px;
+  margin: 0 auto;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: sticky;
+  top: 24px;
+}
+
+.sidebar__title {
+  font-family: var(--heading);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.sidebar__hint {
+  font-size: 12.5px;
+  color: var(--soft);
+  line-height: 1.5;
+  margin-top: -6px;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ------------------------------------------------------------ member card -- */
+
+.member {
+  background: var(--surface);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: box-shadow 0.15s;
+  border: 1px solid var(--line);
+  box-shadow: 0 4px 14px rgba(20, 48, 58, 0.05);
+}
+
+/* Selected cards trade the hairline for a 2px ring in the member's colour,
+   set inline since the colour varies per person. */
+.member--selected {
+  border-color: transparent;
+}
+
+.member__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  width: 100%;
+  border: none;
+  background: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.member__avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--heading);
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+  background-size: cover;
+  background-position: center top;
+}
+
+.member__identity {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The row is a <button>, so its inline children need to stack. */
+.member__name,
+.member__dept,
+.member__days,
+.member__days-label {
+  display: block;
+}
+
+.member__name {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.member__dept {
+  font-size: 12px;
+  color: var(--soft);
+}
+
+.member__balance {
+  text-align: right;
+}
+
+.member__days {
+  font-family: var(--heading);
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.member__days-label {
+  font-size: 11px;
+  color: var(--soft);
+}
+
+.member__detail {
+  border-top: 1px solid var(--line);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.member__usage {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--soft);
+}
+
+.member__track {
+  height: 6px;
+  background: var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.member__bar {
+  height: 100%;
+  border-radius: 999px;
+}
+
+.member__empty {
+  font-size: 12px;
+  color: var(--faint);
+}
+
+/* -------------------------------------------------------------- leave row -- */
+
+.leave {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: #F7FAFB;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.leave .icon {
+  font-size: 16px;
+  margin-top: 1px;
+}
+
+.leave__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.leave__range {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.leave__meta {
+  font-size: 12px;
+  color: var(--soft);
+}
+
+.leave__delete {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--faint);
+  padding: 2px;
+  display: flex;
+}
+
+.leave__delete:hover { color: var(--danger); }
+.leave__delete .icon { font-size: 16px; }
+
+/* --------------------------------------------------------------- banners -- */
+
+.banner-select {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--teal-tint);
+  border-radius: 14px;
+  padding: 11px 16px;
+  font-size: 14px;
+}
+
+.banner-select .icon {
+  font-size: 18px;
+  color: var(--teal);
+}
+
+.banner-select__text { flex: 1; }
+
+.banner-conflict {
+  background: var(--conflict-tint);
+  border-radius: 14px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.banner-conflict__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--heading);
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--conflict-ink);
+}
+
+.banner-conflict__title .icon { font-size: 18px; }
+
+.banner-conflict__row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 13.5px;
+  flex-wrap: wrap;
+}
+
+.banner-conflict__range {
+  font-weight: 700;
+  min-width: 120px;
+}
+
+.banner-conflict__names { color: var(--muted); }
+
+.banner-conflict__days {
+  color: var(--faint);
+  font-size: 12px;
+}
+
+/* --------------------------------------------------------------- toolbar -- */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.toolbar__heading {
+  font-family: var(--heading);
+  font-weight: 800;
+  font-size: 18px;
+}
+
+.toolbar__stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toolbar__range {
+  font-family: var(--heading);
+  font-weight: 800;
+  font-size: 18px;
+  min-width: 150px;
+  text-align: center;
+}
+
+.toolbar__toggle {
+  border: 1px solid var(--field-border);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  font-family: var(--heading);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 9px 16px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.toolbar__toggle--on {
+  border-color: var(--teal);
+  background: var(--teal);
+  color: var(--surface);
+}
+
+.toolbar__toggle .icon { font-size: 16px; }
+
+/* ---------------------------------------------------------------- legend -- */
+
+.legend {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: var(--soft);
+  align-items: center;
+}
+
+.legend__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend__swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 5px;
+  display: inline-block;
+}
+
+/* "On leave" has no single colour — each member gets their own — so the
+   swatch is a small stack of member tints. */
+.legend__stack {
+  display: inline-flex;
+}
+
+.legend__stack .legend__swatch + .legend__swatch {
+  margin-left: -5px;
+  box-shadow: -1px 0 0 var(--canvas);
+}
+
+/* ------------------------------------------------------------ month cards -- */
+
+.months {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(255px, 1fr));
+  gap: 14px;
+  user-select: none;
+}
+
+.month {
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 6px 20px rgba(20, 48, 58, 0.05);
+  border: 1px solid var(--line);
+}
+
+.month__name {
+  font-family: var(--heading);
+  font-weight: 800;
+  font-size: 14px;
+  margin-bottom: 12px;
+  color: var(--ink);
+}
+
+.month__weekdays,
+.month__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.month__weekdays {
+  margin-bottom: 5px;
+}
+
+.month__weekday {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--faint);
+}
+
+.day {
+  height: 27px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  border-radius: 7px;
+  color: var(--ink);
+  transition: background 0.1s;
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+  padding: 0;
+}
+
+.day--blank {
+  visibility: hidden;
+}
+
+.day--weekend {
+  background: var(--chip);
+  color: var(--faint);
+}
+
+.day--holiday {
+  background: var(--holiday-tint);
+  color: var(--holiday-ink);
+}
+
+.day--conflict {
+  background: var(--conflict);
+  color: var(--surface);
+  font-weight: 700;
+}
+
+.day--own,
+.day--drag {
+  color: var(--surface);
+  font-weight: 700;
+}
+
+.day--drag {
+  opacity: 0.7;
+}
+
+.day--today {
+  box-shadow: inset 0 0 0 1.5px var(--teal);
+  font-weight: 700;
+}
+
+.month__footer {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.month__faces {
+  display: flex;
+  padding-left: 6px;
+}
+
+.month__face {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  margin-left: -6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--heading);
+  font-weight: 700;
+  font-size: 10px;
+  transition: transform 0.1s;
+  background-size: cover;
+  background-position: center top;
+  border: none;
+  padding: 0;
+}
+
+.month__face:hover {
+  transform: translateY(-2px);
+}
+
+.month__count {
+  font-size: 11.5px;
+  color: var(--soft);
+}
+
+/* ----------------------------------------------------------------- modal -- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 48, 58, 0.42);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 16px;
+}
+
+.modal {
+  background: var(--surface);
+  border-radius: 18px;
+  box-shadow: 0 20px 50px rgba(18, 48, 58, 0.25);
+  width: 430px;
+  max-width: 92vw;
+  padding: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal__title {
+  font-family: var(--heading);
+  font-size: 19px;
+  font-weight: 800;
+  margin: 0;
+}
+
+.modal__close {
+  border: none;
+  background: var(--chip);
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 6px;
+  display: flex;
+}
+
+.modal__close .icon { font-size: 18px; }
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.field__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.field select,
+.field input,
+.field textarea {
+  border: 1px solid var(--field-border);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ink);
+  background: var(--surface);
+}
+
+.field select { padding: 11px 12px; }
+.field input { padding: 10px 12px; }
+
+.field textarea {
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+.modal__summary {
+  font-size: 12.5px;
+  color: var(--muted);
+  background: var(--chip);
+  border-radius: 10px;
+  padding: 9px 12px;
+}
+
+.modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btn-cancel {
+  border: 1px solid var(--field-border);
+  background: var(--surface);
+  cursor: pointer;
+  color: var(--ink);
+  font-family: var(--heading);
+  font-weight: 700;
+  font-size: 14px;
+  padding: 11px 18px;
+  border-radius: 12px;
+}
+
+.btn-save {
+  border: none;
+  cursor: pointer;
+  font-family: var(--heading);
+  font-weight: 700;
+  font-size: 14px;
+  padding: 11px 20px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--surface);
+  background: var(--teal);
+}
+
+.btn-save .icon { font-size: 15px; }
+
+.btn-save:disabled {
+  background: var(--faint);
+  cursor: not-allowed;
+}
+
+/* ----------------------------------------------------------------- toast -- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--surface);
+  font-family: var(--heading);
+  font-weight: 600;
+  font-size: 13.5px;
+  padding: 11px 18px;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(18, 48, 58, 0.28);
+  z-index: 60;
+}
+
+.toast--error {
+  background: var(--conflict-ink);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------ narrow view -- */
+
+@media (max-width: 1000px) {
+  .shell {
+    grid-template-columns: 1fr;
+    padding: 20px;
+  }
+
+  .sidebar {
+    position: static;
+  }
+
+  .header {
+    padding: 18px 20px;
+  }
+}
