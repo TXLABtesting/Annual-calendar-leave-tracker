@@ -1,15 +1,21 @@
 import type { Leave } from '../types'
 
-export const STORAGE_KEY = 'moca-leave-calendar-2026'
+/**
+ * The calendar itself now lives on the server. localStorage is kept only as a
+ * read cache, so a reload while the server is unreachable still shows the last
+ * known state instead of an empty page. It is never a source of truth.
+ */
+export const CACHE_KEY = 'moca-leave-calendar-2026'
 
 const ISO_RE = /^\d{4}-\d{2}-\d{2}$/
 
-/** The minimum an entry must carry; `id` and `note` are filled in if absent. */
+/** A leave as it arrives from a file — the server assigns the real id. */
+export type LeaveInput = Omit<Leave, 'id'>
+
 interface RawLeave {
   empId: string
   start: string
   end: string
-  id?: unknown
   note?: unknown
 }
 
@@ -26,8 +32,8 @@ function isRawLeave(value: unknown): value is RawLeave {
   )
 }
 
-/** Coerces unknown input into well-formed leaves, filling in id and note. */
-export function parseLeaves(input: unknown): Leave[] | null {
+/** Coerces unknown input into well-formed leave drafts. */
+export function parseLeaves(input: unknown): LeaveInput[] | null {
   const raw = Array.isArray(input)
     ? input
     : input && typeof input === 'object' && Array.isArray((input as { leaves?: unknown }).leaves)
@@ -35,8 +41,7 @@ export function parseLeaves(input: unknown): Leave[] | null {
       : null
   if (!raw) return null
   if (!raw.every(isRawLeave)) return null
-  return raw.map((leave, index) => ({
-    id: typeof leave.id === 'number' ? leave.id : Date.now() + index,
+  return raw.map((leave) => ({
     empId: leave.empId,
     start: leave.start,
     end: leave.end,
@@ -44,25 +49,27 @@ export function parseLeaves(input: unknown): Leave[] | null {
   }))
 }
 
-export function loadLeaves(): Leave[] | null {
+export function readCache(): Leave[] | null {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    return saved ? parseLeaves(JSON.parse(saved)) : null
+    const saved = localStorage.getItem(CACHE_KEY)
+    if (!saved) return null
+    const parsed = JSON.parse(saved) as unknown
+    return Array.isArray(parsed) ? (parsed as Leave[]) : null
   } catch {
     return null
   }
 }
 
-export function saveLeaves(leaves: Leave[]): void {
+export function writeCache(leaves: Leave[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(leaves))
+    localStorage.setItem(CACHE_KEY, JSON.stringify(leaves))
   } catch {
-    // Private-browsing or quota errors are non-fatal — the session still works.
+    // Private browsing or quota — the app works fine without a cache.
   }
 }
 
 export function exportLeaves(leaves: Leave[]): void {
-  const payload = { app: STORAGE_KEY, year: 2026, exportedAt: new Date().toISOString(), leaves }
+  const payload = { app: CACHE_KEY, year: 2026, exportedAt: new Date().toISOString(), leaves }
   const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }))
   const link = document.createElement('a')
   link.href = url
@@ -71,7 +78,7 @@ export function exportLeaves(leaves: Leave[]): void {
   URL.revokeObjectURL(url)
 }
 
-export async function readLeaveFile(file: File): Promise<Leave[]> {
+export async function readLeaveFile(file: File): Promise<LeaveInput[]> {
   let parsed: unknown
   try {
     parsed = JSON.parse(await file.text())

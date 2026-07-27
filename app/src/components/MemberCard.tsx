@@ -14,7 +14,7 @@ export interface MemberStats {
 interface MemberCardProps extends MemberStats {
   selected: boolean
   onSelect: () => void
-  onRemoveLeave: (id: number) => void
+  onRemoveLeave: (id: string) => void
 }
 
 export function MemberCard({

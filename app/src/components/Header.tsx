@@ -1,14 +1,28 @@
 import { useRef } from 'react'
+import type { Connection } from '../types'
 import { Icon } from './Icon'
 
 interface HeaderProps {
+  connection: Connection
   offToday: number
   onAdd: () => void
   onExport: () => void
   onImport: (file: File) => void
 }
 
-export function Header({ offToday, onAdd, onExport, onImport }: HeaderProps) {
+const CONNECTION_LABEL: Record<Connection, string> = {
+  connecting: 'Connecting…',
+  live: 'Shared · live',
+  offline: 'Offline',
+}
+
+const CONNECTION_TITLE: Record<Connection, string> = {
+  connecting: 'Connecting to the shared calendar.',
+  live: 'Changes you make appear for everyone with the link.',
+  offline: "Can't reach the server — showing the last known calendar. Changes won't save.",
+}
+
+export function Header({ connection, offToday, onAdd, onExport, onImport }: HeaderProps) {
   const fileInput = useRef<HTMLInputElement>(null)
 
   return (
@@ -49,6 +63,14 @@ export function Header({ offToday, onAdd, onExport, onImport }: HeaderProps) {
         >
           <Icon name="download-simple" />
         </button>
+
+        <div
+          className={`header__status header__status--${connection}`}
+          title={CONNECTION_TITLE[connection]}
+        >
+          <span className="header__status-dot" />
+          {CONNECTION_LABEL[connection]}
+        </div>
 
         <div className="header__stat">
           <Icon name="users-three" weight="fill" />
