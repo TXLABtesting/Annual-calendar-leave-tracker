@@ -82,11 +82,6 @@ export function Legend({ selected, tints }: LegendProps) {
           {entry.label}
         </span>
       ))}
-
-      <span className="legend__item">
-        <span className="legend__swatch legend__swatch--uncounted" />
-        Inside leave, not deducted
-      </span>
     </div>
   )
 }

@@ -164,16 +164,13 @@ function buildCells(ctx: CellContext): DayCell[] {
     }
 
     // Weekends and public holidays inside a leave range are covered by it but
-    // never deducted from the balance. Filling them like a working day overstates
-    // what the leave costs, so they keep their own background and take only a
-    // coloured underline showing the range passes through.
+    // never deducted, so they render exactly like any other non-working day —
+    // plain and greyed out. Only the tooltip mentions the leave.
     if (accent && (weekend || holiday)) {
       variant = holiday ? 'day--holiday' : shadeWeekends ? 'day--weekend' : ''
       style.background = undefined
       style.color = undefined
       style.fontWeight = undefined
-      ;(style as Record<string, string>)['--accent'] = accent
-      variant += ' day--uncounted'
       title = `${title || (holiday ?? 'Weekend')} · not deducted`
     }
 
