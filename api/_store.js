@@ -22,10 +22,44 @@ const fail = (message) => {
   throw new StoreError(message)
 }
 
-export const SETUP_MESSAGE =
-  'No database is connected yet. In Vercel: Storage → Create Database → ' +
-  'either Redis (Upstash) or Postgres (Neon) → Connect to this project → Redeploy. ' +
+const CONNECT_STEPS =
+  'In Vercel: Storage → Create Database → either Redis (Upstash) or Postgres (Neon) → ' +
+  'Connect to this project (tick Production) → Redeploy. ' +
   'Vercel Blob and Edge Config are not supported.'
+
+export const SETUP_MESSAGE = `No database is connected yet. ${CONNECT_STEPS}`
+
+/**
+ * Names of storage-ish environment variables the function can see. Names only,
+ * never values — enough to tell whether a store is attached and under what
+ * naming, without putting credentials in a response.
+ */
+export function visibleStorageVars() {
+  return Object.keys(process.env)
+    .filter((key) => /(REDIS|KV_|UPSTASH|POSTGRES|DATABASE_URL|STORAGE)/i.test(key))
+    .sort()
+}
+
+/**
+ * Explains why no driver matched, using what is actually present. A store that
+ * is attached but unusable is a different problem from no store at all, and
+ * saying so saves a round of guessing.
+ */
+function diagnose() {
+  const seen = visibleStorageVars()
+  if (!seen.length) return SETUP_MESSAGE
+  if (redis.detectTcpOnly(process.env)) {
+    return (
+      'A Redis store is attached but only exposes a redis:// connection string, ' +
+      'which needs the REST API instead. In Upstash, enable the REST API for this ' +
+      `database, or reconnect it via the Vercel integration. Variables seen: ${seen.join(', ')}.`
+    )
+  }
+  return (
+    'A database appears to be attached but its credentials were not recognised. ' +
+    `Variables seen: ${seen.join(', ')}. ${CONNECT_STEPS}`
+  )
+}
 
 /** Picks the first driver whose environment variables are present. */
 function resolveDriver() {
@@ -39,7 +73,7 @@ function resolveDriver() {
 /** Which database is in use, for diagnostics. */
 export const activeDriver = () => resolveDriver()?.label ?? null
 
-const store = () => resolveDriver()?.store ?? fail(SETUP_MESSAGE)
+const store = () => resolveDriver()?.store ?? fail(diagnose())
 
 const parse = (raw) => {
   try {
@@ -99,6 +133,10 @@ async function seedOnce(db) {
   for (const leave of SEED) await addLeave(leave, db)
 }
 
+/** Whether a failure is "not configured yet" rather than a runtime fault. */
+export const isSetupProblem = (message) =>
+  message.includes(CONNECT_STEPS) || message.includes('REST API instead')
+
 /** Shared JSON response helper. */
 export function send(res, status, body) {
   res.status(status).setHeader('content-type', 'application/json; charset=utf-8')
@@ -115,8 +153,9 @@ export function guard(handler) {
     } catch (error) {
       if (error instanceof StoreError) {
         // `setup` lets the UI show persistent instructions rather than a toast
-        // that vanishes before anyone can act on it.
-        return send(res, 503, { error: error.message, setup: error.message === SETUP_MESSAGE })
+        // that vanishes before anyone can act on it. True for every "not wired
+        // up yet" variant, not only the no-variables-at-all case.
+        return send(res, 503, { error: error.message, setup: isSetupProblem(error.message) })
       }
       console.error(error)
       send(res, 500, { error: 'Server error.' })

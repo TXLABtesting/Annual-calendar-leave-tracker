@@ -126,6 +126,34 @@ await check('missing database explains the fix', () => missing.body.error,
 await check('missing database is flagged as setup', () => missing.body.setup, true)
 await check('health flags setup too', async () => (await call(healthHandler)).body.setup, true)
 
+// Whatever naming Vercel injects, detection must find it.
+const { detect } = await import('../api/_drivers/redis.js')
+const U = 'https://x.upstash.io', T = 'AY...token'
+const naming = {
+  'Vercel KV': { KV_REST_API_URL: U, KV_REST_API_TOKEN: T },
+  'Upstash direct': { UPSTASH_REDIS_REST_URL: U, UPSTASH_REDIS_REST_TOKEN: T },
+  'prefixed by store name': { STORAGE_KV_REST_API_URL: U, STORAGE_KV_REST_API_TOKEN: T },
+  'custom prefix': { MYCAL_UPSTASH_REDIS_REST_URL: U, MYCAL_UPSTASH_REDIS_REST_TOKEN: T },
+}
+for (const [label, env] of Object.entries(naming)) {
+  await check(`detects ${label}`, () => detect(env)?.token, T)
+}
+await check('never picks a read-only token', () =>
+  detect({ KV_REST_API_URL: U, KV_REST_API_READ_ONLY_TOKEN: 'ro' }), null)
+await check('ignores a redis:// (TCP) url', () =>
+  detect({ KV_REST_API_URL: 'redis://h:6379', KV_REST_API_TOKEN: T }), null)
+
+// A TCP-only Redis store is a distinct problem and must say so.
+const { default: healthTcp } = await import('../api/health.js')
+process.env.REDIS_URL = 'rediss://default:pw@host.upstash.io:6379'
+const tcp = await call(healthTcp)
+await check('tcp-only redis is explained', () => tcp.body.error,
+  (m) => typeof m === 'string' && m.includes('REST API instead'))
+await check('tcp-only is flagged as setup', () => tcp.body.setup, true)
+await check('reports variable names, not values', () => tcp.body.storageVarsSeen,
+  (v) => Array.isArray(v) && v.includes('REDIS_URL') && !JSON.stringify(v).includes('pw@'))
+delete process.env.REDIS_URL
+
 // A Postgres connection string must be detected in preference to nothing.
 process.env.POSTGRES_URL = 'postgres://user:pw@localhost:5999/db'
 await check('postgres is detected', async () => (await call(healthHandler)).body.database, 'Postgres')
