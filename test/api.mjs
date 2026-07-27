@@ -111,14 +111,29 @@ await check('DELETE on a missing id is 404', async () =>
 
 await check('unsupported method is 405', async () => (await call(leavesHandler, { method: 'PUT' })).status, 405)
 
+// Health endpoint reports which database is live.
+const { default: healthHandler } = await import('../api/health.js')
+await check('health reports the driver', async () => (await call(healthHandler)).body.database, 'Redis (Upstash)')
+await check('health reports ok', async () => (await call(healthHandler)).body.ok, true)
+
 // With no database configured the app must say so, not fail opaquely.
 delete process.env.KV_REST_API_URL
 delete process.env.KV_REST_API_TOKEN
-const { default: unconfigured } = await import('../api/leaves.js')
-const missing = await call(unconfigured)
+const missing = await call(leavesHandler)
 await check('missing database returns 503', () => missing.status, 503)
 await check('missing database explains the fix', () => missing.body.error,
   (m) => typeof m === 'string' && m.includes('Storage'))
+await check('missing database is flagged as setup', () => missing.body.setup, true)
+await check('health flags setup too', async () => (await call(healthHandler)).body.setup, true)
+
+// A Postgres connection string must be detected in preference to nothing.
+process.env.POSTGRES_URL = 'postgres://user:pw@localhost:5999/db'
+await check('postgres is detected', async () => (await call(healthHandler)).body.database, 'Postgres')
+await check('unreachable postgres reports clearly', async () => {
+  const r = await call(leavesHandler)
+  return [r.status, /Postgres|pg/.test(r.body.error ?? '')]
+}, (v) => v[0] === 503 && v[1] === true)
+delete process.env.POSTGRES_URL
 
 console.log(errs.length ? `\n${errs.length} PROBLEM(S):\n` + errs.join('\n') : '\nAll checks passed.')
 fake.close()

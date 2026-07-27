@@ -46,3 +46,23 @@ export function ConflictBanner({ conflicts, nameOf }: ConflictBannerProps) {
     </div>
   )
 }
+
+interface SetupBannerProps {
+  message: string
+}
+
+/**
+ * Shown when the deployment has no database connected. Unlike an error toast
+ * this stays put, because it describes a configuration step someone has to go
+ * and perform — it won't clear on its own.
+ */
+export function SetupBanner({ message }: SetupBannerProps) {
+  return (
+    <div className="banner-setup" role="status">
+      <Icon name="warning-circle" weight="fill" />
+      <div>
+        <strong>Bookings can't be saved yet.</strong> {message}
+      </div>
+    </div>
+  )
+}

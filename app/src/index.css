@@ -900,3 +900,25 @@ input, select, textarea, button {
     padding: 18px 20px;
   }
 }
+
+/* Setup state: no database connected. Deliberately loud and persistent —
+   until it's resolved nothing anyone books will survive. */
+.banner-setup {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin: 0 32px 4px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: #FDF0E6;
+  border: 1px solid #F2C9A8;
+  color: #8A4A1E;
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.banner-setup i {
+  font-size: 19px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}

@@ -23,12 +23,26 @@ serverless functions.
 without one the app loads but has nowhere to keep bookings and reports
 *"No database is connected"*.
 
-1. In the Vercel project: **Storage → Create Database → Redis (Upstash)**.
-2. **Connect** it to the project. That injects `KV_REST_API_URL` and
-   `KV_REST_API_TOKEN` automatically — nothing to copy by hand.
+1. In the Vercel project: **Storage → Create Database**, then pick either
+   **Redis (Upstash)** or **Postgres (Neon)** — both work, no preference.
+2. **Connect** it to the project. Vercel injects the credentials automatically;
+   there is nothing to copy by hand and no configuration to write.
 3. **Redeploy** so the functions pick up the new variables.
 
-The sample calendar loads itself on first read, so the page won't be empty.
+**Vercel Blob and Edge Config are not supported** — neither suits records that
+are read and written constantly by several people.
+
+Until a database is connected the app loads but shows a banner saying bookings
+can't be saved. Once connected, the sample calendar loads itself on first read.
+
+Check the state at any time:
+
+```
+https://<your-deployment>/api/health
+```
+
+It reports which database was detected and whether it answers — the first thing
+worth knowing when something isn't working.
 
 ## Self-hosting instead
 

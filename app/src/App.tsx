@@ -11,7 +11,7 @@ import { Header } from './components/Header'
 import { MemberCard } from './components/MemberCard'
 import { MonthCard } from './components/MonthCard'
 import { CalendarToolbar, Legend } from './components/CalendarToolbar'
-import { ConflictBanner, SelectionBanner } from './components/Banners'
+import { ConflictBanner, SelectionBanner, SetupBanner } from './components/Banners'
 import { AddLeaveModal } from './components/AddLeaveModal'
 
 /** How many months the compact view shows: the current one plus the next two. */
@@ -36,6 +36,9 @@ export default function App() {
   // and keeps a reload from showing an empty page while the server is down.
   const [leaves, setLeaves] = useState<Leave[]>(() => readCache() ?? [])
   const [connection, setConnection] = useState<Connection>('connecting')
+  // Set when the deployment has no database connected — a configuration state
+  // that persists until fixed, so it gets a banner rather than a toast.
+  const [setupMessage, setSetupMessage] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [drag, setDrag] = useState<Drag | null>(null)
   const [draft, setDraft] = useState<LeaveDraft | null>(null)
@@ -55,7 +58,10 @@ export default function App() {
         setLeaves(next)
         writeCache(next)
       },
-      (live) => setConnection(live ? 'live' : 'offline'),
+      (live, setup) => {
+        setConnection(live ? 'live' : 'offline')
+        setSetupMessage(live ? null : (setup ?? null))
+      },
     )
     return () => sync.current?.stop()
   }, [])
@@ -204,6 +210,8 @@ export default function App() {
         }}
         onImport={handleImport}
       />
+
+      {setupMessage && <SetupBanner message={setupMessage} />}
 
       <div className="shell">
         <aside className="sidebar">

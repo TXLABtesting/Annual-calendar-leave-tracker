@@ -9,7 +9,16 @@ import type { Leave } from '../types'
  */
 const BASE = import.meta.env.VITE_API_BASE ?? ''
 
-export class ApiError extends Error {}
+export class ApiError extends Error {
+  /** True when the deployment has no database connected — a setup step, not a
+   *  transient failure, so the UI shows it persistently rather than as a toast. */
+  readonly setup: boolean
+
+  constructor(message: string, setup = false) {
+    super(message)
+    this.setup = setup
+  }
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response
@@ -22,8 +31,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     // fetch only rejects on network failure, which is the case worth naming.
     throw new ApiError("Can't reach the calendar server.")
   }
-  const body = (await response.json().catch(() => ({}))) as { error?: string } & T
-  if (!response.ok) throw new ApiError(body.error ?? `Request failed (${response.status}).`)
+  const body = (await response.json().catch(() => ({}))) as { error?: string; setup?: boolean } & T
+  if (!response.ok) {
+    throw new ApiError(body.error ?? `Request failed (${response.status}).`, Boolean(body.setup))
+  }
   return body
 }
 
@@ -65,7 +76,7 @@ export interface Subscription {
  */
 export function subscribe(
   onSync: (leaves: Leave[]) => void,
-  onState: (live: boolean) => void,
+  onState: (live: boolean, setupMessage?: string) => void,
 ): Subscription {
   let timer: number | undefined
   let stopped = false
@@ -77,8 +88,8 @@ export function subscribe(
     try {
       onSync(await fetchLeaves())
       onState(true)
-    } catch {
-      onState(false)
+    } catch (error) {
+      onState(false, error instanceof ApiError && error.setup ? error.message : undefined)
     } finally {
       inFlight = false
     }

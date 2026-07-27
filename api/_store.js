@@ -3,115 +3,100 @@
 // Vercel runs serverless functions: no persistent disk, and no long-lived
 // process. SQLite (as used by server/index.mjs for self-hosting) cannot work
 // here — the filesystem is thrown away between invocations. So the calendar
-// lives in Redis instead.
+// lives in whichever database is connected to the project.
 //
-// Talks to Upstash over its REST API with plain fetch, so this stays
-// dependency-free. Each leave is one field in a Redis hash, which makes writes
-// atomic per entry: two people booking at the same moment can't clobber each
-// other the way a read-modify-write of one big JSON blob would.
+// Several are supported because Vercel's Storage tab offers several, and
+// picking a different one shouldn't leave the app dead. Whichever is connected
+// is detected from its environment variables; no configuration needed.
 
 import { randomUUID } from 'node:crypto'
 import { SEED } from '../shared/leave-rules.mjs'
+import * as redis from './_drivers/redis.js'
+import * as postgres from './_drivers/postgres.js'
 
-const KEY = 'leave-calendar-2026'
-const SEEDED_KEY = 'leave-calendar-2026:seeded'
-
-// Vercel's KV integration and a direct Upstash connection use different names.
-// Read at call time, not module load: env vars are injected at runtime, and a
-// module-scope read would bake in whatever existed when the bundle first ran.
-const credentials = () => ({
-  url: process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL,
-  token: process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN,
-})
+const DRIVERS = [redis, postgres]
 
 export class StoreError extends Error {}
 
-export const isConfigured = () => {
-  const { url, token } = credentials()
-  return Boolean(url && token)
+const fail = (message) => {
+  throw new StoreError(message)
 }
 
-async function command(...args) {
-  const { url, token } = credentials()
-  if (!url || !token) {
-    throw new StoreError(
-      'No database is connected. In Vercel: Storage → create a Redis (Upstash) store → connect it to this project, then redeploy.',
-    )
+export const SETUP_MESSAGE =
+  'No database is connected yet. In Vercel: Storage → Create Database → ' +
+  'either Redis (Upstash) or Postgres (Neon) → Connect to this project → Redeploy. ' +
+  'Vercel Blob and Edge Config are not supported.'
+
+/** Picks the first driver whose environment variables are present. */
+function resolveDriver() {
+  for (const driver of DRIVERS) {
+    const config = driver.detect(process.env)
+    if (config) return { ...driver, store: driver.create(config, fail) }
   }
-  let response
-  try {
-    response = await fetch(url, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-      body: JSON.stringify(args),
-    })
-  } catch {
-    throw new StoreError('Could not reach the database.')
-  }
-  if (!response.ok) {
-    throw new StoreError(`Database error (${response.status}).`)
-  }
-  const body = await response.json()
-  if (body.error) throw new StoreError(`Database error: ${body.error}`)
-  return body.result
+  return null
 }
+
+/** Which database is in use, for diagnostics. */
+export const activeDriver = () => resolveDriver()?.label ?? null
+
+const store = () => resolveDriver()?.store ?? fail(SETUP_MESSAGE)
 
 const parse = (raw) => {
   try {
     return JSON.parse(raw)
   } catch {
-    return null // A corrupt field shouldn't take down the whole calendar.
+    return null // A corrupt record shouldn't take down the whole calendar.
   }
 }
+
+/** Only the fields clients care about — internal bookkeeping stays server-side. */
+const shape = ({ id, empId, start, end, note }) => ({ id, empId, start, end, note })
 
 export async function listLeaves() {
-  await seedOnce()
-  const flat = (await command('HGETALL', KEY)) ?? []
-  const leaves = []
-  // HGETALL returns [field, value, field, value, …].
-  for (let i = 1; i < flat.length; i += 2) {
-    const leave = parse(flat[i])
-    if (leave) leaves.push(leave)
-  }
-  return leaves.sort((a, b) => (a.start === b.start ? a.empId.localeCompare(b.empId) : a.start < b.start ? -1 : 1))
+  const db = store()
+  await seedOnce(db)
+  const leaves = (await db.list()).map(parse).filter(Boolean)
+  leaves.sort((a, b) => (a.start === b.start ? a.empId.localeCompare(b.empId) : a.start < b.start ? -1 : 1))
+  return leaves.map(shape)
 }
 
-export async function addLeave({ empId, start, end, note = '', createdBy = null }) {
+export async function addLeave({ empId, start, end, note = '', createdBy = null }, db = store()) {
   const now = new Date().toISOString()
   const leave = { id: randomUUID(), empId, start, end, note }
-  // status and createdBy are stored but unused — they're the seam for adding
-  // approvals and per-user permissions without migrating existing records.
-  await command('HSET', KEY, leave.id, JSON.stringify({ ...leave, status: 'approved', createdBy, createdAt: now, updatedAt: now }))
+  // status and createdBy are stored but unused — the seam for adding approvals
+  // and per-user permissions without migrating existing records.
+  await db.put(leave.id, JSON.stringify({ ...leave, status: 'approved', createdBy, createdAt: now, updatedAt: now }))
   return leave
 }
 
 export async function getLeave(id) {
-  const raw = await command('HGET', KEY, id)
+  const raw = await store().get(id)
   return raw ? parse(raw) : null
 }
 
 export async function updateLeave(id, patch) {
-  const current = await getLeave(id)
+  const db = store()
+  const raw = await db.get(id)
+  const current = raw ? parse(raw) : null
   if (!current) return null
   const next = { ...current, ...patch, updatedAt: new Date().toISOString() }
-  await command('HSET', KEY, id, JSON.stringify(next))
-  return { id, empId: next.empId, start: next.start, end: next.end, note: next.note }
+  await db.put(id, JSON.stringify(next))
+  return shape(next)
 }
 
 /** Returns false when the id wasn't there. */
 export async function removeLeave(id) {
-  return (await command('HDEL', KEY, id)) > 0
+  return store().remove(id)
 }
 
 /**
- * Loads the sample calendar exactly once, ever. SETNX makes it atomic, so
- * concurrent cold starts can't each seed and produce duplicates — and a team
- * that deliberately empties the calendar doesn't get the samples back.
+ * Loads the sample calendar exactly once, ever. The claim is atomic in every
+ * driver, so concurrent cold starts can't each seed and produce duplicates —
+ * and a team that deliberately empties the calendar doesn't get samples back.
  */
-async function seedOnce() {
-  const claimed = await command('SETNX', SEEDED_KEY, new Date().toISOString())
-  if (claimed !== 1) return
-  for (const leave of SEED) await addLeave(leave)
+async function seedOnce(db) {
+  if (!(await db.claimSeed())) return
+  for (const leave of SEED) await addLeave(leave, db)
 }
 
 /** Shared JSON response helper. */
@@ -120,7 +105,7 @@ export function send(res, status, body) {
   res.send(JSON.stringify(body))
 }
 
-/** Wraps a handler so store failures become clean 4xx/5xx JSON, not stack traces. */
+/** Wraps a handler so store failures become clean JSON, not stack traces. */
 export function guard(handler) {
   return async (req, res) => {
     // No caching: this data changes constantly and every client polls it.
@@ -128,7 +113,11 @@ export function guard(handler) {
     try {
       await handler(req, res)
     } catch (error) {
-      if (error instanceof StoreError) return send(res, 503, { error: error.message })
+      if (error instanceof StoreError) {
+        // `setup` lets the UI show persistent instructions rather than a toast
+        // that vanishes before anyone can act on it.
+        return send(res, 503, { error: error.message, setup: error.message === SETUP_MESSAGE })
+      }
       console.error(error)
       send(res, 500, { error: 'Server error.' })
     }

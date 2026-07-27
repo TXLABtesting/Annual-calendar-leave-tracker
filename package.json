@@ -11,5 +11,8 @@
     "build": "cd app && npm install && npm run build",
     "start": "node server/index.mjs",
     "test": "node test/api.mjs"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
   }
 }
