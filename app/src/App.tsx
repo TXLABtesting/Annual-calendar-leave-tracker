@@ -216,9 +216,6 @@ export default function App() {
       <div className="shell">
         <aside className="sidebar">
           <div className="sidebar__title">Team members</div>
-          <div className="sidebar__hint">
-            Pick a member, then click or drag days on the calendar to add their leave.
-          </div>
           {memberStats.map((stats) => (
             <MemberCard
               key={stats.member.id}
