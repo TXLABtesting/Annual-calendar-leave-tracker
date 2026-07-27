@@ -1,0 +1,15 @@
+{
+  "name": "annual-calendar-leave-tracker",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Shared 2026 team leave calendar. Frontend in app/, serverless API in api/, self-hosted server in server/.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "cd app && npm install && npm run build",
+    "start": "node server/index.mjs",
+    "test": "node test/api.mjs"
+  }
+}

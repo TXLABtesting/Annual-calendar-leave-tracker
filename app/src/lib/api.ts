@@ -43,45 +43,71 @@ export async function replaceAll(existing: Leave[], incoming: Omit<Leave, 'id'>[
   for (const leave of incoming) await createLeave(leave)
 }
 
+/** How often to re-read the shared calendar, in milliseconds. */
+const POLL_MS = 5000
+
+export interface Subscription {
+  /** Re-read immediately — used after this browser makes a change. */
+  refresh: () => void
+  stop: () => void
+}
+
 /**
- * Subscribes to server-pushed updates. The server sends the full list on
- * connect and after every change, so `onSync` is the single source of truth.
- * Returns an unsubscribe function.
+ * Keeps the local copy in step with the shared calendar by polling.
+ *
+ * Polling rather than a push stream because the production deployment runs on
+ * serverless functions: there is no long-lived process to hold connections open,
+ * and no shared memory between invocations to broadcast from. The cost is that
+ * someone else's change appears within POLL_MS instead of instantly.
+ *
+ * Polling pauses while the tab is hidden and resumes with an immediate read, so
+ * background tabs don't burn invocations and a returning user sees fresh data.
  */
-export function subscribe(onSync: (leaves: Leave[]) => void, onState: (live: boolean) => void): () => void {
-  let source: EventSource | null = null
-  let retry: number | undefined
-  let closed = false
+export function subscribe(
+  onSync: (leaves: Leave[]) => void,
+  onState: (live: boolean) => void,
+): Subscription {
+  let timer: number | undefined
+  let stopped = false
+  let inFlight = false
 
-  const connect = () => {
-    if (closed) return
-    source = new EventSource(`${BASE}/api/stream`)
-
-    source.addEventListener('sync', (event) => {
-      try {
-        onSync((JSON.parse((event as MessageEvent).data) as { leaves: Leave[] }).leaves)
-        onState(true)
-      } catch {
-        // A malformed frame shouldn't tear down a working connection.
-      }
-    })
-
-    source.onopen = () => onState(true)
-
-    source.onerror = () => {
+  const tick = async () => {
+    if (stopped || inFlight || document.hidden) return
+    inFlight = true
+    try {
+      onSync(await fetchLeaves())
+      onState(true)
+    } catch {
       onState(false)
-      source?.close()
-      // EventSource retries on its own, but only for some failures and with no
-      // backoff control — reconnecting explicitly is more predictable.
-      if (!closed) retry = window.setTimeout(connect, 3000)
+    } finally {
+      inFlight = false
     }
   }
 
-  connect()
+  const schedule = () => {
+    window.clearInterval(timer)
+    timer = window.setInterval(tick, POLL_MS)
+  }
 
-  return () => {
-    closed = true
-    window.clearTimeout(retry)
-    source?.close()
+  const onVisibility = () => {
+    if (document.hidden) {
+      window.clearInterval(timer)
+    } else {
+      void tick()
+      schedule()
+    }
+  }
+
+  void tick()
+  schedule()
+  document.addEventListener('visibilitychange', onVisibility)
+
+  return {
+    refresh: () => void tick(),
+    stop: () => {
+      stopped = true
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisibility)
+    },
   }
 }

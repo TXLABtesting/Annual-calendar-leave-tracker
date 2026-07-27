@@ -1,7 +1,11 @@
 # Leave calendar server
 
-The shared store behind the calendar. Everyone who opens the link reads and
-writes the same data.
+The **self-hosted** backend — one process, SQLite on local disk. Use this when
+the data should stay on your own infrastructure.
+
+The Vercel deployment uses `api/` instead, because serverless has no persistent
+disk for SQLite. Both import `shared/leave-rules.mjs`, so validation and the
+roster can't drift between them. You only need one.
 
 **No dependencies.** `node:http` and `node:sqlite` are both built into Node 22,
 so there is nothing to `npm install` — no lockfile, no native build, no supply
@@ -31,7 +35,6 @@ build`) or you'll get a 404 telling you so.
 | `POST` | `/api/leaves` | Create one — `{empId, start, end, note}` |
 | `PATCH` | `/api/leaves/:id` | Change dates or note |
 | `DELETE` | `/api/leaves/:id` | Remove one |
-| `GET` | `/api/stream` | SSE; pushes the full list on connect and after every change |
 | `GET` | `/api/health` | Liveness probe |
 
 Dates are `YYYY-MM-DD`. The server validates every write — unknown member,
@@ -44,13 +47,12 @@ ids independently would eventually collide.
 
 ## How syncing works
 
-Every browser holds one SSE connection. After any change the server broadcasts
-the complete leave list to all of them. For a team-sized calendar that is far
-simpler than sending diffs, and it makes drift between clients impossible —
-there is one authoritative list and everyone renders it.
+Clients poll `GET /api/leaves` every few seconds and re-read immediately after
+their own changes. There is one authoritative list and everyone renders it, so
+clients can't drift apart.
 
-Clients reconnect on their own with a 3-second retry, and the server sends a
-keep-alive comment every 25 seconds so proxies don't close idle streams.
+Polling rather than a push stream so the same frontend works against the Vercel
+deployment (`api/`), where serverless functions can't hold connections open.
 
 ## Deploying
 

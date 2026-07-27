@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Connection, IsoDate, Leave, LeaveDraft } from './types'
 import { HOLIDAYS, TEAM, YEAR } from './data/team'
 import { MONTH_NAMES, todayIso, workdays } from './lib/dates'
 import { buildDayMap, findConflicts } from './lib/leave'
 import { buildMonths, dragRange } from './lib/calendar'
 import { exportLeaves, readCache, readLeaveFile, writeCache } from './lib/storage'
+import type { Subscription } from './lib/api'
 import { createLeave, deleteLeave, replaceAll, subscribe } from './lib/api'
 import { Header } from './components/Header'
 import { MemberCard } from './components/MemberCard'
@@ -45,26 +46,27 @@ export default function App() {
   })
   const [toast, setToast] = useState<Toast | null>(null)
 
-  // One subscription for the page's lifetime. The server pushes the full list
-  // on connect and after every change by anyone, so there's nothing to poll.
-  useEffect(
-    () =>
-      subscribe(
-        (next) => {
-          setLeaves(next)
-          writeCache(next)
-        },
-        (live) => setConnection(live ? 'live' : 'offline'),
-      ),
-    [],
-  )
+  // One subscription for the page's lifetime, kept in a ref so mutations can
+  // trigger an immediate re-read instead of waiting for the next poll.
+  const sync = useRef<Subscription | null>(null)
+  useEffect(() => {
+    sync.current = subscribe(
+      (next) => {
+        setLeaves(next)
+        writeCache(next)
+      },
+      (live) => setConnection(live ? 'live' : 'offline'),
+    )
+    return () => sync.current?.stop()
+  }, [])
 
   /** Runs a mutation and surfaces failures instead of letting them vanish. */
   const mutate = useCallback(async (action: () => Promise<unknown>, failure: string) => {
     try {
       await action()
-      // No local state update: the server's broadcast is what applies the change,
-      // for us and everyone else, so there's a single path and no drift.
+      // Re-read rather than patching local state: the server is the only source
+      // of truth, so this is the same path everyone else's changes arrive by.
+      sync.current?.refresh()
     } catch (error) {
       setToast({ message: error instanceof Error ? error.message : failure, error: true })
     }
@@ -172,6 +174,7 @@ export default function App() {
       // The server rejects unknown members, so drop them before sending rather
       // than failing the whole import on one bad row.
       await replaceAll(leaves, imported.filter((leave) => !unknown.includes(leave)))
+      sync.current?.refresh()
       setSelectedId(null)
       setToast({
         message: unknown.length

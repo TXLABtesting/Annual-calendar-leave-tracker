@@ -5,9 +5,12 @@
 // native build. Node 22+.
 //
 // One process serves both the JSON API and the built frontend, so the whole app
-// is a single link. Clients hold an SSE connection and receive the full leave
-// list whenever anything changes; with a team-sized dataset that is far simpler
-// than diffing and removes any chance of clients drifting apart.
+// is a single link. Clients poll GET /api/leaves — see app/src/lib/api.ts for
+// why polling rather than a push stream.
+//
+// This is the self-hosting path. The Vercel deployment uses api/ instead, since
+// serverless has no persistent disk for SQLite. Both share shared/leave-rules.mjs
+// so they can't disagree about what a valid booking is.
 
 import { createServer } from 'node:http'
 import { DatabaseSync } from 'node:sqlite'
@@ -16,27 +19,12 @@ import { readFile } from 'node:fs/promises'
 import { existsSync, readFileSync } from 'node:fs'
 import { extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { SEED, validateLeave } from '../shared/leave-rules.mjs'
 
 const HERE = fileURLToPath(new URL('.', import.meta.url))
 const PORT = Number(process.env.PORT ?? 8787)
 const DB_PATH = process.env.DB_PATH ?? join(HERE, 'data', 'leave.db')
 const STATIC_DIR = resolve(process.env.STATIC_DIR ?? join(HERE, '..', 'app', 'dist'))
-
-// Same roster file the frontend imports, so the two can't drift. The server
-// uses it to reject leave for people who don't exist rather than storing rows
-// nothing can render.
-const ROSTER_PATH = process.env.ROSTER_PATH ?? join(HERE, '..', 'shared', 'team.json')
-const MEMBER_IDS = new Set(
-  JSON.parse(readFileSync(ROSTER_PATH, 'utf8')).members.map((member) => member.id),
-)
-
-const SEED = [
-  { empId: 'hana', start: '2026-02-09', end: '2026-02-13', note: 'Annual family travel' },
-  { empId: 'mohammed', start: '2026-04-06', end: '2026-04-10', note: '' },
-  { empId: 'khawla', start: '2026-07-13', end: '2026-07-24', note: 'Summer leave' },
-  { empId: 'ayoub', start: '2026-07-16', end: '2026-07-17', note: '' },
-  { empId: 'faisal', start: '2026-09-21', end: '2026-09-25', note: '' },
-]
 
 // ---------------------------------------------------------------- database ---
 
@@ -98,40 +86,6 @@ const toLeave = (row) => ({
 })
 
 const allLeaves = () => selectAll.all().map(toLeave)
-
-// ------------------------------------------------------------- validation ---
-
-const ISO = /^\d{4}-\d{2}-\d{2}$/
-
-/** Returns an error string, or null when the payload is usable. */
-function validate(body) {
-  if (!body || typeof body !== 'object') return 'Expected a JSON object.'
-  const { empId, start, end, note } = body
-  if (typeof empId !== 'string' || !MEMBER_IDS.has(empId)) return 'Unknown team member.'
-  if (typeof start !== 'string' || !ISO.test(start)) return 'start must be YYYY-MM-DD.'
-  if (typeof end !== 'string' || !ISO.test(end)) return 'end must be YYYY-MM-DD.'
-  if (start > end) return 'end must be on or after start.'
-  if (note != null && typeof note !== 'string') return 'note must be a string.'
-  // Cheap guard against dates that parse but aren't real (2026-02-31).
-  for (const date of [start, end]) {
-    if (new Date(`${date}T12:00:00Z`).toISOString().slice(0, 10) !== date) return `${date} is not a real date.`
-  }
-  return null
-}
-
-// -------------------------------------------------------------------- SSE ---
-
-/** @type {Set<import('node:http').ServerResponse>} */
-const clients = new Set()
-
-function broadcast() {
-  const frame = `event: sync\ndata: ${JSON.stringify({ leaves: allLeaves() })}\n\n`
-  for (const client of clients) {
-    // A client that vanished mid-write is dropped on its 'close' handler; the
-    // try here just stops one dead socket from breaking the loop.
-    try { client.write(frame) } catch { clients.delete(client) }
-  }
-}
 
 // ------------------------------------------------------------------ static ---
 
@@ -213,12 +167,11 @@ const server = createServer(async (req, res) => {
 
     if (pathname === '/api/leaves' && req.method === 'POST') {
       const body = await readBody(req)
-      const error = validate(body)
+      const error = validateLeave(body)
       if (error) return send(res, 400, { error })
       const now = new Date().toISOString()
       const id = randomUUID()
       insert.run(id, body.empId, body.start, body.end, body.note ?? '', body.createdBy ?? null, now, now)
-      broadcast()
       return send(res, 201, { leave: { id, empId: body.empId, start: body.start, end: body.end, note: body.note ?? '' } })
     }
 
@@ -226,7 +179,6 @@ const server = createServer(async (req, res) => {
     if (match && req.method === 'DELETE') {
       const { changes } = deleteOne.run(match[1])
       if (!changes) return send(res, 404, { error: 'No such leave.' })
-      broadcast()
       return send(res, 200, { ok: true })
     }
 
@@ -235,27 +187,10 @@ const server = createServer(async (req, res) => {
       const current = selectAll.all().find((row) => row.id === match[1])
       if (!current) return send(res, 404, { error: 'No such leave.' })
       const merged = { empId: current.emp_id, start: body.start ?? current.start_date, end: body.end ?? current.end_date, note: body.note ?? current.note }
-      const error = validate(merged)
+      const error = validateLeave(merged)
       if (error) return send(res, 400, { error })
       updateOne.run(merged.start, merged.end, merged.note, new Date().toISOString(), match[1])
-      broadcast()
       return send(res, 200, { leave: { id: match[1], ...merged } })
-    }
-
-    if (pathname === '/api/stream') {
-      res.writeHead(200, {
-        'content-type': 'text/event-stream; charset=utf-8',
-        'cache-control': 'no-cache, no-transform',
-        connection: 'keep-alive',
-        // Stops nginx and friends from buffering the stream into uselessness.
-        'x-accel-buffering': 'no',
-      })
-      res.write(`event: sync\ndata: ${JSON.stringify({ leaves: allLeaves() })}\n\n`)
-      clients.add(res)
-      // Proxies drop idle connections; a comment every 25s keeps them open.
-      const beat = setInterval(() => { try { res.write(': beat\n\n') } catch {} }, 25_000)
-      req.on('close', () => { clearInterval(beat); clients.delete(res) })
-      return
     }
 
     if (pathname.startsWith('/api/')) return send(res, 404, { error: 'Unknown endpoint.' })
@@ -279,7 +214,6 @@ server.listen(PORT, () => {
 // Close SQLite cleanly so WAL is checkpointed on container shutdown.
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => {
-    for (const client of clients) { try { client.end() } catch {} }
     server.close(() => { db.close(); process.exit(0) })
   })
 }

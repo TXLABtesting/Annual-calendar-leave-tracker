@@ -5,8 +5,7 @@ track balances and spot overlaps. Implemented from the Claude Design handoff in
 `../project/Leave Calendar 2026.dc.html` ("Soft Data" direction).
 
 The calendar is **shared**: everyone who opens the link sees the same data, and
-a change made by one person appears for everyone else within a second. It is
-backed by [`../server`](../server/README.md).
+a change made by one person appears for everyone else within a few seconds.
 
 ## Running it
 
@@ -17,12 +16,8 @@ node ../server/index.mjs      # terminal 1 — API on :8787
 npm install && npm run dev    # terminal 2 — http://localhost:5173
 ```
 
-For production one process serves both:
-
-```bash
-npm run build                 # type-check + bundle into dist/
-node ../server/index.mjs      # serves the API and dist/ on :8787
-```
+For deployment see the [root README](../README.md): Vercel uses the serverless
+functions in `api/`, self-hosting uses `server/`.
 
 ## How it works
 
@@ -49,10 +44,15 @@ past their balance.
 
 ## Data
 
-Leave lives in SQLite on the server, not in the browser. The page holds an SSE
-connection and re-renders whenever anyone changes anything; `localStorage` is
-kept only as a read cache so a reload during an outage still shows the last
-known calendar.
+Leave lives on the server, not in the browser. The page re-reads the shared
+calendar every 5 seconds and immediately after any change this browser makes,
+so your own edits are instant and someone else's appear within a few seconds.
+Polling pauses while the tab is hidden. `localStorage` is kept only as a read
+cache so a reload during an outage still shows the last known calendar.
+
+Polling rather than a push stream because the Vercel deployment runs on
+serverless functions, which have no long-lived process to hold connections open.
+See `src/lib/api.ts`.
 
 A pill in the header states the connection: **Shared · live**, **Connecting…**,
 or **Offline**. While offline the calendar still renders, but writes fail with a
@@ -69,7 +69,7 @@ skipped rather than failing the whole import.
 ```
 src/
   data/team.ts        roster, balances, UAE public holidays
-  lib/api.ts          REST client and the SSE subscription
+  lib/api.ts          REST client and the polling subscription
   lib/dates.ts        ISO date helpers, working-day counting, formatting
   lib/leave.ts        day map, overlap detection
   lib/calendar.ts     builds the month grids — cell appearance and avatar rows
