@@ -1,0 +1,17 @@
+{
+  "year": 2026,
+  "note": "Single source of truth for the roster. Read by app/src/data/team.ts and by server/index.mjs, which rejects leave for anyone not listed here. Edit this file only.",
+  "members": [
+    { "id": "ali", "name": "Ali Essa", "dept": "Manager", "color": "#0E7C7B", "soft": "#DDF0EF", "balance": 22.5, "photo": "team/ali-essa.jpg" },
+    { "id": "shamlan", "name": "Shamlan AlAmeri", "dept": "Strategy", "color": "#C64B7A", "soft": "#F9E1EA", "balance": 42.5, "photo": "team/shamlan-alameri.jpg" },
+    { "id": "ayoub", "name": "Ayoub Bari", "dept": "Strategy", "color": "#3E6FC4", "soft": "#E6EEFB", "balance": 22.5, "photo": "team/ayoub-bari.jpg" },
+    { "id": "hana", "name": "Hana Omer", "dept": "Communications", "color": "#C67A32", "soft": "#F6E7DA", "balance": 12, "photo": "team/hana-omer.jpg" },
+    { "id": "maitha", "name": "Maitha Al Farhan", "dept": "Human resources", "color": "#D26AA0", "soft": "#FBE7F1", "balance": 22.5, "photo": "team/maitha-al-farhan.jpg" },
+    { "id": "khawla", "name": "Khawla Al Suwaidi", "dept": "Finance", "color": "#2E9E7B", "soft": "#DDF1E9", "balance": 29.84, "photo": "team/khawla-al-suwaidi.jpg" },
+    { "id": "mohammed", "name": "Mohamed Abuhindi", "dept": "Information technology", "color": "#4C6EF0", "soft": "#E4E9FC", "balance": 8, "photo": "team/mohamed-abuhindi.jpg" },
+    { "id": "riad", "name": "Riad Fares Elwan", "dept": "Operations", "color": "#0E8FA6", "soft": "#DBF0F5", "balance": 22.5, "photo": "team/riad-fares-elwan.jpg" },
+    { "id": "khadija", "name": "Khadija Al Shehhi", "dept": "Projects", "color": "#B5842A", "soft": "#F5EBD5", "balance": 30, "photo": "team/khadija-al-shehhi.jpg" },
+    { "id": "faisal", "name": "Faisal", "dept": "Team", "color": "#7C5AC6", "soft": "#ECE4FA", "balance": 22.5 },
+    { "id": "me", "name": "You", "dept": "Team", "color": "#465C7A", "soft": "#E4EAF1", "balance": 30 }
+  ]
+}

@@ -118,6 +118,53 @@ input, select, textarea, button {
   gap: 12px;
 }
 
+.header__status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 8px 13px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.header__status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.header__status--live {
+  color: #1F7A5C;
+  background: #E3F3ED;
+}
+
+.header__status--connecting {
+  color: var(--muted);
+  background: var(--chip);
+}
+
+.header__status--offline {
+  color: #A33A22;
+  background: #FBE6DF;
+}
+
+/* A quiet pulse so a dropped connection is noticeable without nagging. */
+.header__status--offline .header__status-dot {
+  animation: status-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes status-pulse {
+  50% { opacity: 0.25; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header__status--offline .header__status-dot { animation: none; }
+}
+
 .header__stat {
   display: flex;
   align-items: center;

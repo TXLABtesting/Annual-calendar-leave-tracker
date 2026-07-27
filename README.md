@@ -1,25 +1,81 @@
-# CODING AGENTS: READ THIS FIRST
+# Annual leave calendar · 2026
 
-This is a **handoff bundle** from Claude Design (claude.ai/design).
+Shared team leave calendar. Everyone who opens the link sees the same data —
+book leave, track balances, spot overlaps.
 
-A user mocked up designs in HTML/CSS/JS using an AI design tool, then exported this bundle so a coding agent can implement the designs for real.
+Built from a [Claude Design](https://claude.ai/design) handoff; the original
+prototype and the design conversation are in `project/` (see
+[`project/HANDOFF.md`](project/HANDOFF.md)).
 
-## What you should do — IMPORTANT
+```
+app/       React + Vite frontend
+api/       serverless API — used by the Vercel deployment
+server/    self-hosted API — one Node process, SQLite, no dependencies
+shared/    roster and validation rules, used by every runtime
+```
 
-**Read the chat transcripts first.** There are 2 chat transcript(s) in `chats/`. The transcripts show the full back-and-forth between the user and the design assistant — they tell you **what the user actually wants** and **where they landed** after iterating. Don't skip them. The final HTML files are the output, but the chat is where the intent lives.
+## Deploying on Vercel
 
-**Read `project/Leave Calendar 2026.dc.html` in full.** The user had this file open when they triggered the handoff, so it's almost certainly the primary design they want built. Read it top to bottom — don't skim. Then **follow its imports**: open every file it pulls in (shared components, CSS, scripts) so you understand how the pieces fit together before you start implementing.
+The repo is Vercel-ready: `vercel.json` builds `app/` and exposes `api/` as
+serverless functions.
 
-**If anything is ambiguous, ask the user to confirm before you start implementing.** It's much cheaper to clarify scope up front than to build the wrong thing.
+**You must connect a database.** Vercel functions have no persistent disk, so
+without one the app loads but has nowhere to keep bookings and reports
+*"No database is connected"*.
 
-## About the design files
+1. In the Vercel project: **Storage → Create Database → Redis (Upstash)**.
+2. **Connect** it to the project. That injects `KV_REST_API_URL` and
+   `KV_REST_API_TOKEN` automatically — nothing to copy by hand.
+3. **Redeploy** so the functions pick up the new variables.
 
-The design medium is **HTML/CSS/JS** — these are prototypes, not production code. Your job is to **recreate them pixel-perfectly** in whatever technology makes sense for the target codebase (React, Vue, native, whatever fits). Match the visual output; don't copy the prototype's internal structure unless it happens to fit.
+The sample calendar loads itself on first read, so the page won't be empty.
 
-**Don't render these files in a browser or take screenshots unless the user asks you to.** Everything you need — dimensions, colors, layout rules — is spelled out in the source. Read the HTML and CSS directly; a screenshot won't tell you anything they don't.
+## Self-hosting instead
 
-## Bundle contents
+Better if staff leave data shouldn't sit on third-party infrastructure — a
+relevant question for a government entity. One process, SQLite, no npm
+dependencies at all:
 
-- `README.md` — this file
-- `chats/` — conversation transcripts (read these!)
-- `project/` — the `Annual calendar leave tracker` project files (HTML prototypes, assets, components)
+```bash
+cd app && npm install && npm run build && cd ..
+node server/index.mjs                       # http://localhost:8787
+```
+
+Or with Docker, which is the same thing packaged:
+
+```bash
+docker build -t leave-calendar .
+docker run -p 8787:8787 -v leave-data:/srv/server/data leave-calendar
+```
+
+**Mount the volume.** The SQLite file *is* the calendar; without persistent
+storage it's wiped on every redeploy.
+
+See [`server/README.md`](server/README.md) for configuration and the API, and
+[`app/README.md`](app/README.md) for how the calendar behaves.
+
+## Local development
+
+```bash
+node server/index.mjs                       # terminal 1 — API on :8787
+cd app && npm install && npm run dev        # terminal 2 — :5173, proxies /api
+npm test                                    # API tests, no dependencies needed
+```
+
+## Two backends, one set of rules
+
+`api/` and `server/` exist because serverless and self-hosted have genuinely
+different constraints — Redis versus SQLite, no disk versus a disk. They both
+import `shared/leave-rules.mjs` for the roster and validation, so they can't
+disagree about what a valid booking is. Pick one; you don't need both.
+
+## Known limits
+
+- **No login, no permissions, no audit trail.** Anyone with the link can add,
+  edit, or delete anyone's leave, and nothing records who did it. That was the
+  brief for this phase. Treat the link as the only access control it has.
+  `server/README.md` describes the columns already in place for adding roles
+  and approvals.
+- **Changes appear within about 5 seconds**, not instantly — clients poll,
+  because serverless can't hold a push connection open. `app/src/lib/api.ts`
+  explains the trade-off and is where you'd change the interval.

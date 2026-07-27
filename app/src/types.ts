@@ -15,12 +15,16 @@ export interface Member {
 }
 
 export interface Leave {
-  id: number
+  /** Server-issued UUID. Client-generated ids would collide across browsers. */
+  id: string
   empId: string
   start: IsoDate
   end: IsoDate
   note: string
 }
+
+/** Whether the browser currently has a live link to the shared calendar. */
+export type Connection = 'connecting' | 'live' | 'offline'
 
 /** Draft state of the add-leave modal. */
 export interface LeaveDraft {

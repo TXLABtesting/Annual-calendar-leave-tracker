@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { IsoDate, Leave, LeaveDraft } from './types'
-import { HOLIDAYS, SEED_LEAVES, TEAM, YEAR } from './data/team'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { Connection, IsoDate, Leave, LeaveDraft } from './types'
+import { HOLIDAYS, TEAM, YEAR } from './data/team'
 import { MONTH_NAMES, todayIso, workdays } from './lib/dates'
 import { buildDayMap, findConflicts } from './lib/leave'
 import { buildMonths, dragRange } from './lib/calendar'
-import { exportLeaves, loadLeaves, readLeaveFile, saveLeaves } from './lib/storage'
+import { exportLeaves, readCache, readLeaveFile, writeCache } from './lib/storage'
+import type { Subscription } from './lib/api'
+import { createLeave, deleteLeave, replaceAll, subscribe } from './lib/api'
 import { Header } from './components/Header'
 import { MemberCard } from './components/MemberCard'
 import { MonthCard } from './components/MonthCard'
@@ -30,7 +32,10 @@ interface Toast {
 }
 
 export default function App() {
-  const [leaves, setLeaves] = useState<Leave[]>(() => loadLeaves() ?? SEED_LEAVES)
+  // Server-owned. The cache only fills the gap before the first sync arrives,
+  // and keeps a reload from showing an empty page while the server is down.
+  const [leaves, setLeaves] = useState<Leave[]>(() => readCache() ?? [])
+  const [connection, setConnection] = useState<Connection>('connecting')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [drag, setDrag] = useState<Drag | null>(null)
   const [draft, setDraft] = useState<LeaveDraft | null>(null)
@@ -41,7 +46,31 @@ export default function App() {
   })
   const [toast, setToast] = useState<Toast | null>(null)
 
-  useEffect(() => saveLeaves(leaves), [leaves])
+  // One subscription for the page's lifetime, kept in a ref so mutations can
+  // trigger an immediate re-read instead of waiting for the next poll.
+  const sync = useRef<Subscription | null>(null)
+  useEffect(() => {
+    sync.current = subscribe(
+      (next) => {
+        setLeaves(next)
+        writeCache(next)
+      },
+      (live) => setConnection(live ? 'live' : 'offline'),
+    )
+    return () => sync.current?.stop()
+  }, [])
+
+  /** Runs a mutation and surfaces failures instead of letting them vanish. */
+  const mutate = useCallback(async (action: () => Promise<unknown>, failure: string) => {
+    try {
+      await action()
+      // Re-read rather than patching local state: the server is the only source
+      // of truth, so this is the same path everyone else's changes arrive by.
+      sync.current?.refresh()
+    } catch (error) {
+      setToast({ message: error instanceof Error ? error.message : failure, error: true })
+    }
+  }, [])
 
   useEffect(() => {
     if (!toast) return
@@ -113,27 +142,43 @@ export default function App() {
     setDrag(null)
   }
 
-  const removeLeave = (id: number) => setLeaves((current) => current.filter((leave) => leave.id !== id))
+  const removeLeave = (id: string) => mutate(() => deleteLeave(id), 'Could not remove that leave.')
 
   const saveDraft = () => {
     if (!draft || !draft.empId || !draft.start || !draft.end || draft.start > draft.end) return
-    setLeaves((current) => [
-      ...current,
-      { id: Date.now(), empId: draft.empId, start: draft.start as IsoDate, end: draft.end as IsoDate, note: draft.note },
-    ])
+    const entry = {
+      empId: draft.empId,
+      start: draft.start as IsoDate,
+      end: draft.end as IsoDate,
+      note: draft.note,
+    }
     setDraft(null)
+    void mutate(() => createLeave(entry), 'Could not save that leave.')
   }
 
   const handleImport = async (file: File) => {
     try {
       const imported = await readLeaveFile(file)
       const unknown = imported.filter((leave) => !TEAM.some((member) => member.id === leave.empId))
-      if (!window.confirm(`Replace the current calendar with ${imported.length} imported leave entries?`)) return
-      setLeaves(imported)
+      if (unknown.length === imported.length) {
+        throw new Error("None of those entries match this team — nothing imported.")
+      }
+      if (
+        !window.confirm(
+          `Replace the shared calendar with ${imported.length} imported entries?\n\n` +
+            'This changes what everyone sees, not just your browser.',
+        )
+      ) {
+        return
+      }
+      // The server rejects unknown members, so drop them before sending rather
+      // than failing the whole import on one bad row.
+      await replaceAll(leaves, imported.filter((leave) => !unknown.includes(leave)))
+      sync.current?.refresh()
       setSelectedId(null)
       setToast({
         message: unknown.length
-          ? `Imported ${imported.length} entries · ${unknown.length} reference unknown members and won't show`
+          ? `Imported ${imported.length - unknown.length} entries · skipped ${unknown.length} for unknown members`
           : `Imported ${imported.length} leave entries`,
       })
     } catch (error) {
@@ -150,6 +195,7 @@ export default function App() {
   return (
     <div className="page">
       <Header
+        connection={connection}
         offToday={(dayMap[today] ?? []).length}
         onAdd={() => setDraft({ empId: selectedId ?? '', start: '', end: '', note: '' })}
         onExport={() => {
