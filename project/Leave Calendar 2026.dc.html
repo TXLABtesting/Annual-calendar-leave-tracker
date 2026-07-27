@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/uae-government-design-system-aegov-dls-faadc44a-dc1e-49c6-8fb7-c363fc140982/colors_and_type.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/regular/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/bold/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/fill/style.css">
+  <style>
+    body { margin:0; background:#F4F7F9; font-family:Roboto,sans-serif; color:#12303A; }
+    a { color:#0E7C7B; } a:hover { color:#0A5F5E; }
+    input, select, textarea { font-family:Roboto,sans-serif; }
+  </style>
+</helmet>
+<div style="min-height:100vh;">
+  <header style="background:#FFFFFF;border-bottom:1px solid #EAEEF1;padding:22px 32px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+    <div>
+      <div style="font-family:Inter,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.08em;color:#0E7C7B;text-transform:uppercase;">Human resources</div>
+      <h1 style="font-family:Inter,sans-serif;font-size:26px;font-weight:800;margin:4px 0 0;line-height:1.15;letter-spacing:-0.01em;">Team leave · 2026</h1>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="display:flex;align-items:center;gap:8px;background:#F1F5F7;border-radius:14px;padding:9px 16px;font-size:14px;">
+        <i class="ph-fill ph-users-three" style="font-size:18px;color:#0E7C7B;"></i>
+        <span>Off today: <strong>{{ offToday }}</strong></span>
+      </div>
+      <button onClick="{{ openModal }}" style="border:none;cursor:pointer;background:#0E7C7B;color:#FFFFFF;font-family:Inter,sans-serif;font-weight:700;font-size:14px;padding:11px 20px;border-radius:14px;display:flex;align-items:center;gap:8px;" style-hover="background:#0A5F5E;"><i class="ph-bold ph-plus" style="font-size:16px;"></i>Add leave</button>
+    </div>
+  </header>
+
+  <div style="display:grid;grid-template-columns:320px 1fr;gap:24px;padding:24px 32px;align-items:start;max-width:1760px;margin:0 auto;">
+
+    <aside style="display:flex;flex-direction:column;gap:12px;position:sticky;top:24px;">
+      <div style="font-family:Inter,sans-serif;font-size:15px;font-weight:800;">Team members</div>
+      <div style="font-size:12.5px;color:#8FA0AB;line-height:1.5;margin-top:-6px;">Pick a member, then click or drag days on the calendar to add their leave.</div>
+      <sc-for list="{{ emps }}" as="emp" hint-placeholder-count="10">
+        <div style="{{ emp.cardStyle }}">
+          <div onClick="{{ emp.select }}" style="display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;">
+            <div style="{{ emp.avatarStyle }}">{{ emp.initials }}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:700;font-size:14px;">{{ emp.name }}</div>
+              <div style="font-size:12px;color:#8FA0AB;">{{ emp.dept }}</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="{{ emp.remainStyle }}">{{ emp.remaining }}</div>
+              <div style="font-size:11px;color:#8FA0AB;">days left</div>
+            </div>
+          </div>
+          <sc-if value="{{ emp.expanded }}" hint-placeholder-val="{{ false }}">
+            <div style="border-top:1px solid #EEF2F4;padding:12px 14px;display:flex;flex-direction:column;gap:10px;">
+              <div style="display:flex;justify-content:space-between;font-size:12px;color:#8FA0AB;">
+                <span>Used {{ emp.used }} of {{ emp.allowance }} days</span>
+              </div>
+              <div style="height:6px;background:#EEF2F4;border-radius:999px;overflow:hidden;">
+                <div style="{{ emp.barStyle }}"></div>
+              </div>
+              <sc-for list="{{ emp.leaves }}" as="lv" hint-placeholder-count="2">
+                <div style="display:flex;align-items:flex-start;gap:8px;background:#F7FAFB;border:1px solid #EAEEF1;border-radius:10px;padding:8px 10px;">
+                  <i class="ph-fill ph-calendar-dots" style="{{ lv.iconStyle }}"></i>
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-size:12.5px;font-weight:600;">{{ lv.range }}</div>
+                    <div style="font-size:12px;color:#8FA0AB;">{{ lv.meta }}</div>
+                  </div>
+                  <button onClick="{{ lv.del }}" title="Remove this leave" style="border:none;background:none;cursor:pointer;color:#B4C0C8;padding:2px;" style-hover="color:#E05A45;"><i class="ph ph-trash" style="font-size:16px;"></i></button>
+                </div>
+              </sc-for>
+              <sc-if value="{{ emp.noLeaves }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:12px;color:#B4C0C8;">No leave recorded yet.</div>
+              </sc-if>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </aside>
+
+    <main style="display:flex;flex-direction:column;gap:14px;">
+      <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;gap:10px;background:#DDF0EF;border-radius:14px;padding:11px 16px;font-size:14px;">
+          <i class="ph-bold ph-cursor-click" style="font-size:18px;color:#0E7C7B;"></i>
+          <span style="flex:1;">Adding leave for <strong>{{ selName }}</strong> — click a day or drag across days on the calendar.</span>
+          <button onClick="{{ clearSel }}" style="border:none;background:none;cursor:pointer;color:#0A5F5E;font-weight:700;font-size:13px;font-family:Roboto,sans-serif;text-decoration:underline;">Done</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ hasConflicts }}" hint-placeholder-val="{{ false }}">
+        <div style="background:#FDEEE8;border-radius:14px;padding:14px 18px;display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:center;gap:8px;font-family:Inter,sans-serif;font-weight:800;font-size:14px;color:#B84A2E;">
+            <i class="ph-fill ph-warning-circle" style="font-size:18px;"></i>
+            <span>Overlapping leave ({{ conflictCount }})</span>
+          </div>
+          <sc-for list="{{ conflicts }}" as="cf" hint-placeholder-count="2">
+            <div style="display:flex;align-items:baseline;gap:10px;font-size:13.5px;flex-wrap:wrap;">
+              <span style="font-weight:700;min-width:120px;">{{ cf.range }}</span>
+              <span style="color:#6B7C86;">{{ cf.names }}</span>
+              <span style="color:#B4C0C8;font-size:12px;">{{ cf.days }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <sc-if value="{{ showAll }}" hint-placeholder-val="{{ true }}">
+          <div style="font-family:Inter,sans-serif;font-weight:800;font-size:18px;">Full year</div>
+        </sc-if>
+        <sc-if value="{{ notShowAll }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <button onClick="{{ prevMonth }}" aria-label="Previous month" style="border:1px solid #E1E7EB;background:#FFFFFF;border-radius:10px;cursor:pointer;color:#12303A;width:36px;height:36px;display:flex;align-items:center;justify-content:center;" style-hover="background:#F1F5F7;"><i class="ph-bold ph-caret-left" style="font-size:15px;"></i></button>
+            <div style="font-family:Inter,sans-serif;font-weight:800;font-size:18px;min-width:150px;text-align:center;">{{ curMonthName }}</div>
+            <button onClick="{{ nextMonth }}" aria-label="Next month" style="border:1px solid #E1E7EB;background:#FFFFFF;border-radius:10px;cursor:pointer;color:#12303A;width:36px;height:36px;display:flex;align-items:center;justify-content:center;" style-hover="background:#F1F5F7;"><i class="ph-bold ph-caret-right" style="font-size:15px;"></i></button>
+          </div>
+        </sc-if>
+        <button onClick="{{ toggleAll }}" style="{{ toggleStyle }}"><i class="{{ toggleIcon }}" style="font-size:16px;"></i>{{ toggleLabel }}</button>
+      </div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:#8FA0AB;align-items:center;">
+        <span style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:14px;border-radius:5px;background:#0E7C7B;display:inline-block;"></span>Selected member on leave</span>
+        <span style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:14px;border-radius:5px;background:#C4DEDE;display:inline-block;"></span>Teammates on leave</span>
+        <span style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:14px;border-radius:5px;background:#EF8F6B;display:inline-block;"></span>Conflict</span>
+        <span style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:14px;border-radius:5px;background:#E6EEFB;display:inline-block;"></span>Public holiday</span>
+        <span style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:14px;border-radius:5px;background:#F1F5F7;display:inline-block;"></span>Weekend</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:14px;user-select:none;">
+        <sc-for list="{{ months }}" as="mo" hint-placeholder-count="12">
+          <div style="background:#FFFFFF;border-radius:16px;padding:16px;box-shadow:0 6px 20px rgba(20,48,58,0.05);border:1px solid #EEF2F4;">
+            <div style="font-family:Inter,sans-serif;font-weight:800;font-size:14px;margin-bottom:12px;color:#12303A;">{{ mo.name }}</div>
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:5px;">
+              <div style="text-align:center;font-size:10px;font-weight:600;color:#B4C0C8;">Mo</div>
+              <div style="text-align:center;font-size:10px;font-weight:600;color:#B4C0C8;">Tu</div>
+              <div style="text-align:center;font-size:10px;font-weight:600;color:#B4C0C8;">We</div>
+              <div style="text-align:center;font-size:10px;font-weight:600;color:#B4C0C8;">Th</div>
+              <div style="text-align:center;font-size:10px;font-weight:600;color:#B4C0C8;">Fr</div>
+              <div style="text-align:center;font-size:10px;font-weight:600;color:#B4C0C8;">Sa</div>
+              <div style="text-align:center;font-size:10px;font-weight:600;color:#B4C0C8;">Su</div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;">
+              <sc-for list="{{ mo.cells }}" as="c" hint-placeholder-count="35">
+                <div style="{{ c.style }}" title="{{ c.title }}" onMouseDown="{{ c.down }}" onMouseEnter="{{ c.enter }}" onClick="{{ c.click }}">{{ c.label }}</div>
+              </sc-for>
+            </div>
+            <sc-if value="{{ mo.hasLeave }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:12px;padding-top:12px;border-top:1px solid #EEF2F4;display:flex;align-items:center;gap:10px;">
+                <div style="display:flex;padding-left:6px;">
+                  <sc-for list="{{ mo.onLeave }}" as="p" hint-placeholder-count="3">
+                    <div onClick="{{ p.select }}" style="{{ p.style }}" title="{{ p.title }}">{{ p.initials }}</div>
+                  </sc-for>
+                </div>
+                <span style="font-size:11.5px;color:#8FA0AB;">{{ mo.leaveCount }}</span>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </main>
+  </div>
+
+  <sc-if value="{{ modalOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeModal }}" style="position:fixed;inset:0;background:rgba(18,48,58,0.42);display:flex;align-items:center;justify-content:center;z-index:50;">
+      <div onClick="{{ stopProp }}" style="background:#FFFFFF;border-radius:18px;box-shadow:0 20px 50px rgba(18,48,58,0.25);width:430px;max-width:92vw;padding:26px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <h2 style="font-family:Inter,sans-serif;font-size:19px;font-weight:800;margin:0;">Add leave</h2>
+          <button onClick="{{ closeModal }}" aria-label="Close" style="border:none;background:#F1F5F7;border-radius:10px;cursor:pointer;color:#6B7C86;padding:6px;display:flex;"><i class="ph ph-x" style="font-size:18px;"></i></button>
+        </div>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;">Team member
+          <select value="{{ mEmp }}" onChange="{{ onMEmp }}" style="border:1px solid #D5DDE2;border-radius:10px;padding:11px 12px;font-size:14px;background:#FFFFFF;">
+            <option value="">Select a team member</option>
+            <sc-for list="{{ empOptions }}" as="o" hint-placeholder-count="10">
+              <option value="{{ o.id }}">{{ o.name }}</option>
+            </sc-for>
+          </select>
+        </label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;">From
+            <input type="date" value="{{ mStart }}" onChange="{{ onMStart }}" min="2026-01-01" max="2026-12-31" style="border:1px solid #D5DDE2;border-radius:10px;padding:10px 12px;font-size:14px;">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;">To
+            <input type="date" value="{{ mEnd }}" onChange="{{ onMEnd }}" min="2026-01-01" max="2026-12-31" style="border:1px solid #D5DDE2;border-radius:10px;padding:10px 12px;font-size:14px;">
+          </label>
+        </div>
+        <div style="font-size:12.5px;color:#6B7C86;background:#F1F5F7;border-radius:10px;padding:9px 12px;">{{ mSummary }}</div>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;">Note (optional)
+          <textarea value="{{ mNote }}" onChange="{{ onMNote }}" rows="2" placeholder="e.g. Annual family travel" style="border:1px solid #D5DDE2;border-radius:10px;padding:10px 12px;font-size:14px;resize:vertical;"></textarea>
+        </label>
+        <div style="display:flex;justify-content:flex-end;gap:10px;">
+          <button onClick="{{ closeModal }}" style="border:1px solid #D5DDE2;background:#FFFFFF;cursor:pointer;color:#12303A;font-family:Inter,sans-serif;font-weight:700;font-size:14px;padding:11px 18px;border-radius:12px;">Cancel</button>
+          <button onClick="{{ saveLeave }}" style="{{ saveStyle }}"><i class="ph-bold ph-check" style="font-size:15px;"></i>Save leave</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;annualAllowance&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:30,&quot;min&quot;:5,&quot;max&quot;:60,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Policy&quot;},&quot;showHolidays&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Calendar&quot;},&quot;shadeWeekends&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Calendar&quot;}}">
+class Component extends DCLogic {
+  YEAR = 2026;
+  EMPS = [
+    { id: 'ali', name: 'Ali Essa', dept: 'Manager', color: '#0E7C7B', soft: '#DDF0EF', bal: 22.5, photo: 'uploads/Ali Essa.jpg' },
+    { id: 'shamlan', name: 'Shamlan AlAmeri', dept: 'Strategy', color: '#C64B7A', soft: '#F9E1EA', bal: 42.5, photo: 'uploads/Shamlan AlAmeri.jpg' },
+    { id: 'ayoub', name: 'Ayoub Bari', dept: 'Strategy', color: '#3E6FC4', soft: '#E6EEFB', bal: 22.5, photo: 'uploads/Ayoub Bari.jpg' },
+    { id: 'hana', name: 'Hana Omer', dept: 'Communications', color: '#C67A32', soft: '#F6E7DA', bal: 12, photo: 'uploads/Hana Omer.jpg' },
+    { id: 'maitha', name: 'Maitha Al Farhan', dept: 'Human resources', color: '#D26AA0', soft: '#FBE7F1', bal: 22.5, photo: 'uploads/Maitha Al Farhan.jpg' },
+    { id: 'khawla', name: 'Khawla Al Suwaidi', dept: 'Finance', color: '#2E9E7B', soft: '#DDF1E9', bal: 29.84, photo: 'uploads/Khawla Al Suwaidi.jpg' },
+    { id: 'mohammed', name: 'Mohamed Abuhindi', dept: 'Information technology', color: '#4C6EF0', soft: '#E4E9FC', bal: 8, photo: 'uploads/Mohamed Abuhindi (1).jpg' },
+    { id: 'riad', name: 'Riad Fares Elwan', dept: 'Operations', color: '#0E8FA6', soft: '#DBF0F5', bal: 22.5, photo: 'uploads/Riad Fares Elwan.jpg' },
+    { id: 'khadija', name: 'Khadija Al Shehhi', dept: 'Projects', color: '#B5842A', soft: '#F5EBD5', bal: 30, photo: 'uploads/Khadija Al Shehhi (1).jpg' }
+  ];
+  HOLIDAYS = {
+    '2026-01-01': "New Year's Day",
+    '2026-03-19': 'Eid Al Fitr', '2026-03-20': 'Eid Al Fitr', '2026-03-21': 'Eid Al Fitr',
+    '2026-05-26': 'Arafat Day', '2026-05-27': 'Eid Al Adha', '2026-05-28': 'Eid Al Adha', '2026-05-29': 'Eid Al Adha',
+    '2026-06-16': 'Islamic New Year',
+    '2026-08-25': "Prophet's Birthday",
+    '2026-12-02': 'National Day', '2026-12-03': 'National Day'
+  };
+  KEY = 'moca-leave-calendar-2026';
+  state = {
+    leaves: [
+      { id: 1, empId: 'hana', start: '2026-02-09', end: '2026-02-13', note: 'Annual family travel' },
+      { id: 2, empId: 'mohammed', start: '2026-04-06', end: '2026-04-10', note: '' },
+      { id: 3, empId: 'khawla', start: '2026-07-13', end: '2026-07-24', note: 'Summer leave' },
+      { id: 4, empId: 'ayoub', start: '2026-07-16', end: '2026-07-17', note: '' },
+      { id: 5, empId: 'faisal', start: '2026-09-21', end: '2026-09-25', note: '' }
+    ],
+    sel: null,
+    drag: null,
+    modal: null,
+    showAll: false,
+    curMonth: new Date().getFullYear() === 2026 ? new Date().getMonth() : 7
+  };
+  componentDidMount() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(this.KEY));
+      if (Array.isArray(saved)) this.setState({ leaves: saved });
+    } catch (e) {}
+    this._up = () => {
+      const d = this.state.drag;
+      if (!d) return;
+      const [a, b] = d.a <= d.b ? [d.a, d.b] : [d.b, d.a];
+      this.setState({ drag: null, modal: { empId: this.state.sel, start: a, end: b, note: '' } });
+    };
+    window.addEventListener('mouseup', this._up);
+  }
+  componentWillUnmount() { window.removeEventListener('mouseup', this._up); }
+  persist(leaves) { try { localStorage.setItem(this.KEY, JSON.stringify(leaves)); } catch (e) {} }
+  iso(m, d) { return this.YEAR + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0'); }
+  workdays(start, end) {
+    let n = 0;
+    const cur = new Date(start + 'T12:00:00'), last = new Date(end + 'T12:00:00');
+    while (cur <= last) {
+      const dow = (cur.getDay() + 6) % 7;
+      const key = cur.toISOString().slice(0, 10);
+      if (dow < 5 && !this.HOLIDAYS[key]) n++;
+      cur.setDate(cur.getDate() + 1);
+    }
+    return n;
+  }
+  fmt(isoStr) {
+    const d = new Date(isoStr + 'T12:00:00');
+    return d.getDate() + ' ' + d.toLocaleString('en-GB', { month: 'short' });
+  }
+  addLeave(l) {
+    const leaves = [...this.state.leaves, l];
+    this.setState({ leaves, modal: null });
+    this.persist(leaves);
+  }
+  removeLeave(id) {
+    const leaves = this.state.leaves.filter(l => l.id !== id);
+    this.setState({ leaves });
+    this.persist(leaves);
+  }
+  setModal(patch) { this.setState({ modal: { ...this.state.modal, ...patch } }); }
+  renderVals() {
+    const allowance = Math.max(1, Math.round(this.props.annualAllowance ?? 30));
+    const showHolidays = this.props.showHolidays ?? true;
+    const showWeekends = this.props.shadeWeekends ?? true;
+    const { leaves, sel, drag, modal } = this.state;
+    const byName = {}, byColor = {}, bySoft = {};
+    this.EMPS.forEach(e => { byName[e.id] = e.name; byColor[e.id] = e.color; bySoft[e.id] = e.soft; });
+    const dayMap = {};
+    leaves.forEach(l => {
+      const cur = new Date(l.start + 'T12:00:00'), last = new Date(l.end + 'T12:00:00');
+      while (cur <= last) {
+        const k = cur.toISOString().slice(0, 10);
+        (dayMap[k] = dayMap[k] || []).push(l.empId);
+        cur.setDate(cur.getDate() + 1);
+      }
+    });
+    const todayIso = new Date().toISOString().slice(0, 10);
+    let dragSet = null;
+    if (drag) {
+      dragSet = {};
+      const [a, b] = drag.a <= drag.b ? [drag.a, drag.b] : [drag.b, drag.a];
+      const cur = new Date(a + 'T12:00:00'), last = new Date(b + 'T12:00:00');
+      while (cur <= last) { dragSet[cur.toISOString().slice(0, 10)] = 1; cur.setDate(cur.getDate() + 1); }
+    }
+    const base = 'height:27px;display:flex;align-items:center;justify-content:center;font-size:11px;border-radius:7px;color:#12303A;transition:background 0.1s;';
+    const months = [];
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    for (let m = 0; m < 12; m++) {
+      const first = new Date(this.YEAR, m, 1);
+      const lead = (first.getDay() + 6) % 7;
+      const daysIn = new Date(this.YEAR, m + 1, 0).getDate();
+      const cells = [];
+      for (let i = 0; i < lead; i++) cells.push({ label: '', style: base + 'visibility:hidden;', title: '' });
+      for (let d = 1; d <= daysIn; d++) {
+        const k = this.iso(m, d);
+        const dow = (new Date(this.YEAR, m, d).getDay() + 6) % 7;
+        const wknd = dow >= 5;
+        const hol = showHolidays ? this.HOLIDAYS[k] : null;
+        const off = dayMap[k] || [];
+        let bg = '', color = '', title = '', weight = '';
+        if (wknd && showWeekends) bg = 'background:#F1F5F7;color:#B4C0C8;';
+        if (hol) { bg = 'background:#E6EEFB;'; color = 'color:#3E6FC4;'; title = hol; }
+        if (sel) {
+          const others = off.filter(id => id !== sel);
+          if (others.length) { bg = 'background:#DFEEEE;'; title = others.map(id => byName[id]).join(', ') + (hol ? ' · ' + hol : ''); }
+          if (off.includes(sel)) { bg = 'background:' + byColor[sel] + ';'; color = 'color:#FFFFFF;'; weight = 'font-weight:700;'; title = byName[sel] + ' on leave'; }
+          if (off.includes(sel) && others.length) { bg = 'background:#EF8F6B;'; color = 'color:#FFFFFF;'; weight = 'font-weight:700;'; title = 'Conflict: ' + off.map(id => byName[id]).join(', '); }
+          if (dragSet && dragSet[k]) { bg = 'background:' + byColor[sel] + ';opacity:0.7;'; color = 'color:#FFFFFF;'; weight = 'font-weight:700;'; }
+        } else if (off.length >= 2) {
+          bg = 'background:#EF8F6B;'; color = 'color:#FFFFFF;'; weight = 'font-weight:700;';
+          title = 'Conflict: ' + off.map(id => byName[id]).join(', ') + (hol ? ' · ' + hol : '');
+        } else if (off.length === 1) {
+          bg = 'background:' + bySoft[off[0]] + ';'; color = 'color:' + byColor[off[0]] + ';'; weight = 'font-weight:700;';
+          title = byName[off[0]] + (hol ? ' · ' + hol : '');
+        }
+        const ring = k === todayIso ? 'box-shadow:inset 0 0 0 1.5px #0E7C7B;font-weight:700;' : '';
+        const cell = { label: String(d), style: base + 'cursor:pointer;' + bg + color + weight + ring, title };
+        if (sel) {
+          cell.down = (e) => { e.preventDefault(); this.setState({ drag: { a: k, b: k } }); };
+          cell.enter = () => { if (this.state.drag) this.setState({ drag: { ...this.state.drag, b: k } }); };
+        } else {
+          cell.click = () => this.setState({ modal: { empId: '', start: k, end: k, note: '' } });
+        }
+        cells.push(cell);
+      }
+      // who is on leave this month
+      const monthStart = this.iso(m, 1), monthEnd = this.iso(m, daysIn);
+      const seen = {}, onLeave = [];
+      leaves.forEach(l => {
+        if (l.start <= monthEnd && l.end >= monthStart && !seen[l.empId]) {
+          seen[l.empId] = 1;
+          const e2 = this.EMPS.find(x => x.id === l.empId);
+          if (e2) {
+            const isSel = sel === e2.id;
+            onLeave.push({
+              name: e2.name,
+              title: (isSel ? 'Showing only ' : 'Click to show only ') + e2.name + "'s leave",
+              initials: e2.photo ? '' : e2.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase(),
+              select: () => this.setState({ sel: isSel ? null : e2.id, drag: null }),
+              style: 'width:26px;height:26px;border-radius:8px;flex-shrink:0;margin-left:-6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;font-weight:700;font-size:10px;transition:transform 0.1s;box-shadow:' + (isSel ? '0 0 0 2px ' + e2.color : '0 0 0 2px #FFFFFF') + ';' + (isSel ? '' : sel ? 'opacity:0.4;' : '') + (e2.photo ? "background-image:url('" + encodeURI(e2.photo) + "');background-size:cover;background-position:center top;" : 'background:' + e2.soft + ';color:' + e2.color + ';')
+            });
+          }
+        }
+      });
+      months.push({ name: monthNames[m], idx: m, cells, onLeave, hasLeave: onLeave.length > 0, leaveCount: onLeave.length + (onLeave.length === 1 ? ' person' : ' people') + ' on leave' });
+    }
+    const { showAll, curMonth } = this.state;
+    const displayMonths = showAll ? months : months.slice(curMonth, Math.min(curMonth + 3, 12));
+    const emps = this.EMPS.map(e => {
+      const mine = leaves.filter(l => l.empId === e.id).sort((a, b) => a.start < b.start ? -1 : 1);
+      const used = mine.reduce((s, l) => s + this.workdays(l.start, l.end), 0);
+      const empAllow = e.bal != null ? e.bal : allowance;
+      const selected = sel === e.id;
+      const pct = Math.min(100, Math.round(used / empAllow * 100));
+      const fmtN = (n) => Number(n.toFixed(2)).toString();
+      return {
+        name: e.name, dept: e.dept,
+        used, allowance: fmtN(empAllow), remaining: fmtN(empAllow),
+        expanded: selected, noLeaves: selected && mine.length === 0,
+        cardStyle: 'background:#FFFFFF;border-radius:16px;overflow:hidden;transition:box-shadow 0.15s;' + (selected ? 'box-shadow:0 0 0 2px ' + e.color + ',0 8px 20px rgba(20,48,58,0.10);' : 'box-shadow:0 4px 14px rgba(20,48,58,0.05);border:1px solid #EEF2F4;'),
+        initials: e.photo ? '' : e.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase(),
+        avatarStyle: 'width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;font-weight:700;font-size:13px;flex-shrink:0;' + (e.photo ? "background-image:url('" + encodeURI(e.photo) + "');background-size:cover;background-position:center top;" + (selected ? 'box-shadow:0 0 0 2px ' + e.color + ';' : '') : 'background:' + (selected ? e.color : e.soft) + ';color:' + (selected ? '#FFFFFF' : e.color) + ';'),
+        remainStyle: 'font-family:Inter,sans-serif;font-weight:800;font-size:15px;color:' + e.color + ';',
+        barStyle: 'height:100%;border-radius:999px;background:' + (pct >= 90 ? '#E05A45' : e.color) + ';width:' + pct + '%;',
+        select: () => this.setState({ sel: selected ? null : e.id, drag: null }),
+        leaves: mine.map(l => {
+          const wd = this.workdays(l.start, l.end);
+          return {
+            range: l.start === l.end ? this.fmt(l.start) : this.fmt(l.start) + ' – ' + this.fmt(l.end),
+            meta: wd + ' working day' + (wd === 1 ? '' : 's') + (l.note ? ' · ' + l.note : ''),
+            iconStyle: 'font-size:16px;color:' + e.color + ';margin-top:1px;',
+            del: (ev) => { ev.stopPropagation(); this.removeLeave(l.id); }
+          };
+        })
+      };
+    });
+    const conflicts = [];
+    let run = null;
+    const cur = new Date('2026-01-01T12:00:00'), last = new Date('2026-12-31T12:00:00');
+    while (cur <= last) {
+      const k = cur.toISOString().slice(0, 10);
+      const off = dayMap[k] || [];
+      if (off.length >= 2) {
+        if (run) { run.end = k; off.forEach(id => run.ids.add(id)); run.days++; }
+        else run = { start: k, end: k, ids: new Set(off), days: 1 };
+      } else if (run) { conflicts.push(run); run = null; }
+      cur.setDate(cur.getDate() + 1);
+    }
+    if (run) conflicts.push(run);
+    const conflictList = conflicts.map(c => ({
+      range: c.start === c.end ? this.fmt(c.start) : this.fmt(c.start) + ' – ' + this.fmt(c.end),
+      names: [...c.ids].map(id => byName[id]).join(', '),
+      days: c.days + (c.days === 1 ? ' day' : ' days')
+    }));
+    const m = modal || {};
+    const valid = m.empId && m.start && m.end && m.start <= m.end;
+    let mSummary = 'Select a team member and dates.';
+    if (m.start && m.end && m.start <= m.end) {
+      const wd = this.workdays(m.start, m.end);
+      mSummary = this.fmt(m.start) + ' to ' + this.fmt(m.end) + ' · ' + wd + ' working day' + (wd === 1 ? '' : 's') + ' (weekends and public holidays excluded)';
+    } else if (m.start && m.end) {
+      mSummary = 'The end date must be on or after the start date.';
+    }
+    const saveBase = 'border:none;cursor:pointer;font-family:Inter,sans-serif;font-weight:700;font-size:14px;padding:11px 20px;border-radius:12px;display:flex;align-items:center;gap:7px;color:#FFFFFF;';
+    return {
+      months: displayMonths, emps,
+      showAll, notShowAll: !showAll,
+      curMonthName: displayMonths.length > 1 ? (monthNames[curMonth] + ' – ' + monthNames[displayMonths[displayMonths.length - 1].idx] + ' 2026') : (monthNames[curMonth] + ' 2026'),
+      toggleLabel: showAll ? 'Current month' : 'All months',
+      toggleIcon: showAll ? 'ph-bold ph-calendar-blank' : 'ph-bold ph-squares-four',
+      toggleStyle: 'border:1px solid ' + (showAll ? '#D5DDE2' : '#0E7C7B') + ';background:' + (showAll ? '#FFFFFF' : '#0E7C7B') + ';color:' + (showAll ? '#12303A' : '#FFFFFF') + ';cursor:pointer;font-family:Inter,sans-serif;font-weight:700;font-size:13px;padding:9px 16px;border-radius:11px;display:flex;align-items:center;gap:7px;',
+      toggleAll: () => this.setState({ showAll: !showAll }),
+      prevMonth: () => this.setState({ curMonth: Math.max(0, curMonth - 1) }),
+      nextMonth: () => this.setState({ curMonth: Math.min(9, curMonth + 1) }),
+      conflicts: conflictList,
+      hasConflicts: conflictList.length > 0,
+      conflictCount: conflictList.length,
+      offToday: (dayMap[todayIso] || []).length,
+      hasSel: !!sel, selName: sel ? byName[sel] : '',
+      clearSel: () => this.setState({ sel: null, drag: null }),
+      modalOpen: !!modal,
+      empOptions: this.EMPS.map(e => ({ id: e.id, name: e.name })),
+      mEmp: m.empId || '', mStart: m.start || '', mEnd: m.end || '', mNote: m.note || '', mSummary,
+      saveStyle: saveBase + (valid ? 'background:#0E7C7B;' : 'background:#B4C0C8;cursor:not-allowed;'),
+      onMEmp: (e) => this.setModal({ empId: e.target.value }),
+      onMStart: (e) => this.setModal({ start: e.target.value }),
+      onMEnd: (e) => this.setModal({ end: e.target.value }),
+      onMNote: (e) => this.setModal({ note: e.target.value }),
+      openModal: () => this.setState({ modal: { empId: this.state.sel || '', start: '', end: '', note: '' } }),
+      closeModal: () => this.setState({ modal: null }),
+      stopProp: (e) => e.stopPropagation(),
+      saveLeave: () => { if (valid) this.addLeave({ id: Date.now(), empId: m.empId, start: m.start, end: m.end, note: m.note || '' }); }
+    };
+  }
+}
+</script>
+</body>
+</html>
