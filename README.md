@@ -23,11 +23,24 @@ serverless functions.
 without one the app loads but has nowhere to keep bookings and reports
 *"No database is connected"*.
 
-1. In the Vercel project: **Storage → Create Database**, then pick either
-   **Redis (Upstash)** or **Postgres (Neon)** — both work, no preference.
-2. **Connect** it to the project. Vercel injects the credentials automatically;
-   there is nothing to copy by hand and no configuration to write.
-3. **Redeploy** so the functions pick up the new variables.
+**Option A — connect a store through Vercel:**
+
+1. **Storage → Create Database** → **Redis (Upstash)** or **Postgres (Neon)**.
+2. **Connect** it to this project, making sure **Production** is ticked.
+3. **Redeploy**.
+
+**Option B — set the credentials by hand.** More reliable, and the fix when
+Option A leaves `storageVarsSeen` empty (which means nothing was injected, often
+because the database was created directly in Upstash rather than through
+Vercel's Storage tab):
+
+1. Upstash console → your database → **REST API** → copy `UPSTASH_REDIS_REST_URL`
+   and `UPSTASH_REDIS_REST_TOKEN`.
+2. Vercel → **Settings → Environment Variables** → add both, scoped to
+   **Production**.
+3. **Redeploy**.
+
+Any naming works — detection matches on shape, not exact variable names.
 
 **Vercel Blob and Edge Config are not supported** — neither suits records that
 are read and written constantly by several people.

@@ -23,9 +23,11 @@ const fail = (message) => {
 }
 
 const CONNECT_STEPS =
-  'In Vercel: Storage → Create Database → either Redis (Upstash) or Postgres (Neon) → ' +
-  'Connect to this project (tick Production) → Redeploy. ' +
-  'Vercel Blob and Edge Config are not supported.'
+  'Either connect a store in Vercel (Storage → Create Database → Redis (Upstash) ' +
+  'or Postgres (Neon) → Connect to this project, ticking Production), or set the ' +
+  'credentials by hand: copy UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN ' +
+  'from the Upstash console into Vercel → Settings → Environment Variables ' +
+  '(Production), then redeploy. Vercel Blob and Edge Config are not supported.'
 
 export const SETUP_MESSAGE = `No database is connected yet. ${CONNECT_STEPS}`
 
