@@ -52,6 +52,9 @@ export function dragRange(a: IsoDate, b: IsoDate): Set<IsoDate> {
   return days
 }
 
+/** Shared with the legend and .day--conflict in index.css. */
+const CONFLICT = '#EF8F6B'
+
 export function buildMonths(options: CalendarOptions): MonthModel[] {
   const {
     year, members, leaves, dayMap, holidays, selectedId, dragging, today,
@@ -106,6 +109,9 @@ function buildCells(ctx: CellContext): DayCell[] {
     let variant = ''
     const style: CSSProperties = {}
     let title = ''
+    // Whose leave covers this day, if anyone — used to mark days that sit
+    // inside a range without being deducted.
+    let accent: string | undefined
 
     if (weekend && shadeWeekends) variant = 'day--weekend'
 
@@ -123,33 +129,52 @@ function buildCells(ctx: CellContext): DayCell[] {
 
       if (selectedIsOff && selected) {
         variant = 'day--own'
+        accent = selected.color
         style.background = selected.color
         style.color = undefined
         title = `${selected.name} on leave`
       }
       if (selectedIsOff && others.length) {
         variant = 'day--conflict'
+        accent = CONFLICT
         style.background = undefined
         style.color = undefined
         title = `Conflict: ${off.map(nameOf).join(', ')}`
       }
       if (dragging?.has(date) && selected) {
         variant = 'day--drag'
+        accent = selected.color
         style.background = selected.color
         style.color = undefined
       }
     } else if (off.length >= 2) {
       variant = 'day--conflict'
+      accent = CONFLICT
       title = `Conflict: ${off.map(nameOf).join(', ')}${holiday ? ` · ${holiday}` : ''}`
     } else if (off.length === 1) {
       const owner = off[0] ? byId.get(off[0]) : undefined
       if (owner) {
         variant = ''
+        accent = owner.color
         style.background = owner.soft
         style.color = owner.color
         style.fontWeight = 700
         title = owner.name + (holiday ? ` · ${holiday}` : '')
       }
+    }
+
+    // Weekends and public holidays inside a leave range are covered by it but
+    // never deducted from the balance. Filling them like a working day overstates
+    // what the leave costs, so they keep their own background and take only a
+    // coloured underline showing the range passes through.
+    if (accent && (weekend || holiday)) {
+      variant = holiday ? 'day--holiday' : shadeWeekends ? 'day--weekend' : ''
+      style.background = undefined
+      style.color = undefined
+      style.fontWeight = undefined
+      ;(style as Record<string, string>)['--accent'] = accent
+      variant += ' day--uncounted'
+      title = `${title || (holiday ?? 'Weekend')} · not deducted`
     }
 
     const className = ['day', variant, date === today ? 'day--today' : '']
