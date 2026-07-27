@@ -69,6 +69,14 @@ export function MemberCard({
         </span>
       </button>
 
+      {/* Decorative: the row button already carries the accessible name, so a
+          screen reader would otherwise hear this twice. */}
+      <span className="member__hint" aria-hidden="true">
+        {selected
+          ? 'Now click or drag across days on the calendar'
+          : 'Click to select, then drag across calendar days'}
+      </span>
+
       {selected && (
         <div className="member__detail">
           <div className="member__usage">

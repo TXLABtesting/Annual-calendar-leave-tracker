@@ -276,10 +276,17 @@ input, select, textarea, button {
 .member {
   background: var(--surface);
   border-radius: 16px;
-  overflow: hidden;
   transition: box-shadow 0.15s;
   border: 1px solid var(--line);
   box-shadow: 0 4px 14px rgba(20, 48, 58, 0.05);
+  /* Not `overflow: hidden` — the hover hint has to escape the card. The panel
+     below rounds its own bottom corners instead. */
+  position: relative;
+}
+
+/* Lift the hovered card so its hint sits above the following ones. */
+.member:hover {
+  z-index: 2;
 }
 
 /* Selected cards trade the hairline for a 2px ring in the member's colour,
@@ -357,6 +364,8 @@ input, select, textarea, button {
 
 .member__detail {
   border-top: 1px solid var(--line);
+  border-bottom-left-radius: 15px;
+  border-bottom-right-radius: 15px;
   padding: 12px 14px;
   display: flex;
   flex-direction: column;
@@ -915,4 +924,55 @@ input, select, textarea, button {
   font-size: 19px;
   flex-shrink: 0;
   margin-top: 1px;
+}
+
+/* Hover hint — how to book leave, shown only while pointing at a card so the
+   sidebar stays clean. Purely decorative: the card is a button and already
+   announces itself to screen readers. */
+.member__hint {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translate(-6px, -50%);
+  margin-left: 10px;
+  padding: 7px 11px;
+  border-radius: 9px;
+  background: var(--ink);
+  color: #FFFFFF;
+  font-size: 12px;
+  line-height: 1.35;
+  width: max-content;
+  max-width: 220px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.14s ease, transform 0.14s ease;
+  box-shadow: 0 6px 18px rgba(18, 48, 58, 0.18);
+}
+
+/* Small pointer back towards the card. */
+.member__hint::before {
+  content: '';
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  border: 5px solid transparent;
+  border-right-color: var(--ink);
+  transform: translateY(-50%);
+}
+
+.member:hover .member__hint,
+.member__row:focus-visible ~ .member__hint {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
+/* Coarse pointers have no hover, and a tooltip that only appears on tap is
+   worse than none. */
+@media (hover: none) {
+  .member__hint { display: none; }
+}
+
+/* No room to float a tooltip beside a full-width sidebar. */
+@media (max-width: 1040px) {
+  .member__hint { display: none; }
 }
