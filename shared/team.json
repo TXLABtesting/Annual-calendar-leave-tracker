@@ -9,7 +9,7 @@
     { "id": "maitha", "name": "Maitha Al Farhan", "dept": "Senior Executive – Design and Innovation", "color": "#D26AA0", "soft": "#FBE7F1", "balance": 30.5, "photo": "team/maitha-al-farhan.jpg" },
     { "id": "khawla", "name": "Khawla Al Suwaidi", "dept": "Consultant – Creativity & Innovation", "color": "#2E9E7B", "soft": "#DDF1E9", "balance": 29.84, "photo": "team/khawla-al-suwaidi.jpg" },
     { "id": "mohammed", "name": "Mohamed Abuhindi", "dept": "Advisor – Customer Relations", "color": "#4C6EF0", "soft": "#E4E9FC", "balance": 8, "photo": "team/mohamed-abuhindi.jpg" },
-    { "id": "riad", "name": "Riad Fares Elwan", "dept": "Specialist – Customer Relations", "color": "#0E8FA6", "soft": "#DBF0F5", "balance": 22.5, "photo": "team/riad-fares-elwan.jpg" },
+    { "id": "riad", "name": "Riad Fares Elwan", "dept": "Specialist – Customer Relations", "color": "#0E8FA6", "soft": "#DBF0F5", "balance": 18.5, "photo": "team/riad-fares-elwan.jpg" },
     { "id": "khadija", "name": "Khadija Al Shehhi", "dept": "Senior Manager – Customer Relations", "color": "#B5842A", "soft": "#F5EBD5", "balance": 30, "photo": "team/khadija-al-shehhi.jpg" },
     { "id": "faisal", "name": "Faisal", "dept": "Personal Lifestyle Manager", "color": "#7C5AC6", "soft": "#ECE4FA", "balance": 13 }
   ]
