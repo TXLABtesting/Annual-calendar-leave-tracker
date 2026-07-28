@@ -744,6 +744,11 @@ input, select, textarea, button {
   box-shadow: 0 20px 50px rgba(18, 48, 58, 0.25);
   width: 430px;
   max-width: 92vw;
+  /* Landscape phones, and portrait ones with the keyboard open, leave far less
+     height than the form needs — scroll inside rather than clipping the save
+     button off-screen. */
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
   padding: 26px;
   display: flex;
   flex-direction: column;
@@ -887,23 +892,6 @@ input, select, textarea, button {
   white-space: nowrap;
 }
 
-/* ------------------------------------------------------------ narrow view -- */
-
-@media (max-width: 1000px) {
-  .shell {
-    grid-template-columns: 1fr;
-    padding: 20px;
-  }
-
-  .sidebar {
-    position: static;
-  }
-
-  .header {
-    padding: 18px 20px;
-  }
-}
-
 /* Setup state: no database connected. Deliberately loud and persistent —
    until it's resolved nothing anyone books will survive. */
 .banner-setup {
@@ -975,4 +963,93 @@ input, select, textarea, button {
 /* No room to float a tooltip beside a full-width sidebar. */
 @media (max-width: 1040px) {
   .member__hint { display: none; }
+}
+
+/* ============================================================================
+   NARROW VIEWS
+   Measured problems this fixes: the header action row was 454px wide inside a
+   375px phone, pushing the page into horizontal scroll and cutting off "Add
+   leave"; and the ten member cards sat above the calendar, so a phone user
+   scrolled the whole team before seeing a single month.
+   ========================================================================== */
+
+/* Belt and braces: nothing should ever be able to scroll the page sideways. */
+html,
+body {
+  overflow-x: hidden;
+}
+
+@media (max-width: 1000px) {
+  .shell {
+    grid-template-columns: 1fr;
+    padding: 20px;
+    gap: 20px;
+  }
+
+  /* The calendar is what people come for; the roster reads as reference below
+     it. Source order stays list-then-calendar, which is the right reading
+     order for assistive tech on any width. */
+  .main { order: 1; }
+  .sidebar {
+    order: 2;
+    position: static;
+  }
+
+  .header { padding: 18px 20px; }
+
+  /* Match the shell's gutter so banners line up with the cards. */
+  .banner-setup { margin-inline: 20px; }
+}
+
+@media (max-width: 720px) {
+  .header {
+    gap: 12px;
+  }
+
+  .header__title { font-size: 22px; }
+
+  /* Wrap instead of overflowing, and let the row use the full width so the
+     buttons distribute rather than spilling past the edge. */
+  .header__actions {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* "Add leave" is the primary action — give it the remaining room rather than
+     letting it be the thing that gets clipped. */
+  .header__actions .btn-primary {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .header__stat,
+  .header__status {
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+
+  .shell { padding: 16px; }
+  .banner-setup { margin-inline: 16px; }
+
+  .months { gap: 12px; }
+}
+
+@media (max-width: 420px) {
+  .header__title { font-size: 20px; }
+
+  /* Below this the two chips can't share a line with anything else. */
+  .header__stat,
+  .header__status {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .member__row { padding: 11px 12px; }
+  .month { padding: 14px; }
+}
+
+/* Touch targets: 27px cells are comfortable with a mouse, not with a finger. */
+@media (pointer: coarse) {
+  .day { height: 36px; }
 }
